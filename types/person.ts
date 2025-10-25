@@ -6,6 +6,7 @@ export interface Person {
   headshot: string;
   firstName: string;
   lastName?: string;
+  id: string;
   education?: Education[];
   experience?: Experience[];
   skills?: string[];
