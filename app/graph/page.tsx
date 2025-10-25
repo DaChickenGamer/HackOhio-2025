@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ReactFlow, Controls, MiniMap, type Node, type NodeProps, type Edge } from "@xyflow/react";
+import { ReactFlow, Controls, MiniMap, type Node, type NodeProps, Handle, Position } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 const THEME = {
@@ -17,9 +17,14 @@ type PersonData = {
   id: string;
   firstName: string;
   lastName: string;
+  label?: string;
 };
 
-const PersonCircleNode: React.FC<NodeProps<Node<PersonData>>> = ({ data }) => {
+const fullName = (d: PersonData) => `${d.firstName} ${d.lastName}`.trim() || d.label || "Unnamed";
+
+const PersonCircleNode = ({ data }: NodeProps) => {
+  const personData = data as PersonData;
+  const name = fullName(personData);
   return (
     <div
       className="relative flex items-center justify-center w-24 h-24 rounded-full"
@@ -27,8 +32,11 @@ const PersonCircleNode: React.FC<NodeProps<Node<PersonData>>> = ({ data }) => {
         background: `linear-gradient(145deg, ${THEME.primary} 0%, ${THEME.secondary} 100%)`,
         border: `2px solid ${THEME.border}`,
       }}
+      title={name}
     >
-      {data.firstName} {data.lastName}
+      {name}
+      <Handle type="source" position={Position.Right} />
+      <Handle type="target" position={Position.Left} />
     </div>
   );
 };
@@ -42,9 +50,11 @@ const initialNodes: Node<PersonData>[] = [
     id: "root",
     position: { x: 600, y: 360 },
     type: "person",
-    data: { id: "root", firstName: "Root", lastName: "" },
+    data: { id: "root", firstName: "Root", lastName: "", label: "Root" },
   },
 ];
+
+import type { Edge } from "@xyflow/react";
 
 const initialEdges: Edge[] = [];
 
