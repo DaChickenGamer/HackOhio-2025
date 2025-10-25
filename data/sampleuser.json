@@ -1,0 +1,129 @@
+{
+  "PK": "ROOT#user123",
+  "SK": "PERSON#user123",
+  "type": "Root",
+  "isRoot": true,
+  "firstName": "Alice",
+  "lastName": "Smith",
+  "picture": "https://example.com/pic/alice.jpg",
+  "skills": ["AWS", "React", "Leadership"],
+  "links": ["https://linkedin.com/in/alice"],
+  "notes": ["This is the root user's profile."],
+  "connections": [
+    {
+      "SK": "CONNECTION#conn001",
+      "personId": "conn001",
+      "firstName": "Bob",
+      "lastName": "Jones",
+      "picture": "https://example.com/pic/bob.jpg",
+      "notes": ["Met at a conference in 2023."],
+      "tags": ["friend", "colleague"],
+      "jobs": [
+        {
+          "SK": "JOB#conn001#001",
+          "title": "Software Engineer",
+          "company": "OpenAI",
+          "startDate": "2020-06-01",
+          "endDate": "2023-03-01",
+          "isPresentJob": false
+        },
+        {
+          "SK": "JOB#conn001#002",
+          "title": "Senior Engineer",
+          "company": "DeepMind",
+          "startDate": "2023-04-01",
+          "isPresentJob": true
+        }
+      ],
+      "education": [
+        {
+          "SK": "EDUCATION#conn001#001",
+          "school": "MIT",
+          "major": "Computer Science",
+          "startYear": 2016,
+          "endYear": 2020
+        }
+      ],
+      "contacts": [
+        {
+          "SK": "CONTACT#conn001#001",
+          "type": "email",
+          "value": "bob@example.com"
+        },
+        {
+          "SK": "CONTACT#conn001#002",
+          "type": "phone",
+          "value": "+1234567890"
+        }
+      ],
+      "skills": [
+        {
+          "SK": "SKILL#conn001#001",
+          "name": "Python",
+          "level": "Advanced"
+        },
+        {
+          "SK": "SKILL#conn001#002",
+          "name": "TypeScript",
+          "level": "Intermediate"
+        }
+      ],
+      "notesList": [
+        {
+          "SK": "NOTE#conn001#001",
+          "content": "Bob recently switched to a new team at OpenAI.",
+          "createdAt": "2025-10-25T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "SK": "CONNECTION#conn002",
+      "personId": "conn002",
+      "firstName": "Carol",
+      "lastName": "Danvers",
+      "picture": "https://example.com/pic/carol.jpg",
+      "notes": ["Met at hackathon 2022."],
+      "tags": ["mentor"],
+      "jobs": [
+        {
+          "SK": "JOB#conn002#001",
+          "title": "Project Manager",
+          "company": "Google",
+          "startDate": "2018-01-01",
+          "endDate": "2022-12-31",
+          "isPresentJob": false
+        }
+      ],
+      "education": [
+        {
+          "SK": "EDUCATION#conn002#001",
+          "school": "Stanford University",
+          "major": "Management",
+          "startYear": 2012,
+          "endYear": 2016
+        }
+      ],
+      "contacts": [
+        {
+          "SK": "CONTACT#conn002#001",
+          "type": "email",
+          "value": "carol@example.com"
+        }
+      ],
+      "skills": [
+        {
+          "SK": "SKILL#conn002#001",
+          "name": "Leadership",
+          "level": "Expert"
+        }
+      ],
+      "notesList": [
+        {
+          "SK": "NOTE#conn002#001",
+          "content": "Carol gave a great talk on management.",
+          "createdAt": "2025-10-25T11:00:00Z"
+        }
+      ]
+    }
+  ]
+}
