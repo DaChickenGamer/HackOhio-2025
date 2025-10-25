@@ -27,6 +27,12 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@aws-sdk/client-dynamodb": "^3.917.0",
+    "@aws-sdk/lib-dynamodb": "^3.917.0",
+    "@aws-sdk/util-dynamodb": "^3.917.0",
+    "next": "16.0.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   }
 }
