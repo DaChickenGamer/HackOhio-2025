@@ -1,8 +1,7 @@
- 
 import { Person } from "@/types/person";
  
- // Create a test person object
-  const testPerson: Person = {
+export const testPerson: Person = {
+    headshot: "",
     firstName: "John",
     lastName: "Doe",
     id: "12345",

@@ -15,9 +15,13 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "recharts": "^3.3.0",
+    "uuid": "^13.0.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.917.0",
+    "@aws-sdk/lib-dynamodb": "^3.917.0",
+    "@aws-sdk/util-dynamodb": "^3.917.0",
     "@tailwindcss/postcss": "^4",
     "@types/estree": "^1.0.8",
     "@types/json-schema": "^7.0.15",
@@ -26,13 +30,10 @@
     "@types/react-dom": "^19.2.2",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
-    "tailwindcss": "^4",
-    "typescript": "^5.9.3",
-    "@aws-sdk/client-dynamodb": "^3.917.0",
-    "@aws-sdk/lib-dynamodb": "^3.917.0",
-    "@aws-sdk/util-dynamodb": "^3.917.0",
     "next": "16.0.0",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5.9.3"
   }
 }
