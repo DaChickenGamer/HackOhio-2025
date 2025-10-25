@@ -18,6 +18,15 @@ type PersonData = {
   firstName: string;
   lastName: string;
   label?: string;
+  education?: string;
+  experience?: string;
+  skills?: string[];
+  contact?: {
+    email?: string;
+    phone?: string;
+    linkedin?: string;
+    github?: string;
+  };
 };
 
 const fullName = (d: PersonData) => `${d.firstName} ${d.lastName}`.trim() || d.label || "Unnamed";
@@ -27,11 +36,7 @@ const initials = (d: PersonData) => {
   return ((fn[0] || "") + (ln[0] || "")).toUpperCase() || "•";
 };
 
-// Node type for React Flow
-type PersonNode = Node<PersonData, "person">;
-type PersonNodeProps = NodeProps<PersonNode>;
-
-const PersonCircleNode: React.FC<PersonNodeProps> = ({ data }) => {
+const PersonCircleNode: React.FC<NodeProps<Node<PersonData>>> = ({ data }) => {
   const name = fullName(data);
   return (
     <div
@@ -39,13 +44,14 @@ const PersonCircleNode: React.FC<PersonNodeProps> = ({ data }) => {
       style={{
         background: `linear-gradient(145deg, ${THEME.primary} 0%, ${THEME.secondary} 100%)`,
         border: `2px solid ${THEME.border}`,
+        boxShadow: `0 8px 24px rgba(34, 211, 238, 0.18)`,
       }}
       title={name}
     >
-      <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold bg-white text-black">
+      <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold bg-white/80 text-black">
         {initials(data)}
       </div>
-      <div className="absolute bottom-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-black/35 text-white">
+      <div className="absolute bottom-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-black/35 text-white backdrop-blur-sm">
         {name}
       </div>
       <Handle type="source" position={Position.Right} />
@@ -58,20 +64,26 @@ const nodeTypes = {
   person: PersonCircleNode,
 };
 
-const initialNodes: PersonNode[] = [
+const initialNodes: Node<PersonData>[] = [
   {
     id: "root",
     position: { x: 600, y: 360 },
     type: "person",
-    data: { id: "root", firstName: "Root", lastName: "", label: "Root" },
+    data: { 
+      id: "root", 
+      firstName: "Root", 
+      lastName: "", 
+      label: "Root",
+      skills: ["Leadership"],
+    },
   },
 ];
 
-const initialEdges: Edge[] = [];
+const initialEdges: Edge<PersonData>[] = [];
 
 export default function GraphPage() {
-  const [nodes, setNodes] = useState<PersonNode[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const [nodes, setNodes] = useState(initialNodes);
+  const [edges, setEdges] = useState(initialEdges);
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: THEME.bg }}>
