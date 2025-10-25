@@ -1,6 +1,6 @@
 import { Contact } from "./contact";
-import { Experience } from "./education";
-import { Education } from "./experience";
+import { Experience } from "./experience";
+import { Education } from "./education";
 
 export interface Person {
   headshot: string;

@@ -1,5 +1,5 @@
-export interface Experience {
-  role: string;
-  company: string;
-  duration?: string;
+export interface Education {
+  degree: string;
+  school: string;
+  year?: string;
 }
