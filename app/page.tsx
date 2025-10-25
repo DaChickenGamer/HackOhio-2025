@@ -1,21 +1,37 @@
-import Link from "next/link";
-import Image from "next/image";
+"use client";
+
+import { useEffect } from "react";
+import { testPerson } from "@/data/TestUserCase";
+import { Person } from "@/types/person";
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        {/* existing content ... */}
+    async function addConnection(data: Person) {
+        const res = await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
 
-        <div className="mt-8">
-          <Link
-            href="/graph"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-background"
-          >
-            See the graph →
-          </Link>
-        </div>
-      </main>
-    </div>
-  );
+        const text = await res.text(); 
+
+        if (!res.ok) {
+            console.error("Response status:", res.status);
+            console.error("Response body:", text); 
+            throw new Error(`Failed to add connection: ${res.status} ${text}`);
+        }
+
+        try {
+            return JSON.parse(text);
+        } catch {
+            return text; 
+        }
+    }
+
+    useEffect(() => {
+        addConnection(testPerson)
+            .then(console.log)
+            .catch(console.error);
+    }, []);
+
+    return <div>Home Page</div>;
 }

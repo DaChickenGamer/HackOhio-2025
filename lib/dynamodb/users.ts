@@ -20,7 +20,7 @@ export async function getUser(userId: string) {
 
 export async function putUser(userData: Person) {
     const item = {
-        id: userData.id,
+        id: `#ROOT${userData.id}`,
         type: "Root",
         firstName: userData.firstName,
         lastName: userData.lastName,
@@ -44,7 +44,7 @@ export async function putUser(userData: Person) {
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `${userData.id}#EXP#${index}`,
+                    id: `#ROOT${userData.id}#EXP#${index}`,
                     type: "Experience",
                     role: exp.role,
                     company: exp.company,
@@ -62,7 +62,7 @@ export async function putUser(userData: Person) {
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `${userData.id}#EDU#${index}`, // unique id for each education
+                    id: `#ROOT${userData.id}#EDU#${index}`, // unique id for each education
                     type: "Education",
                     degree: edu.degree,
                     school: edu.school,
@@ -80,7 +80,7 @@ export async function putUser(userData: Person) {
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `${userData.id}#CONTACT#${index}`, // unique id for each contact
+                    id: `#ROOT${userData.id}#CONTACT#${index}`, // unique id for each contact
                     type: "Contact",
                     contactType: contact.type,
                     value: contact.value,
@@ -157,7 +157,7 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
     const connectionId = uuidv4();
 
     const item = {
-        id: `${userId}#CONNECTION#${connectionId}`,
+        id: `#ROOT${userId}#CONNECTION#${connectionId}`,
         type: "Connection",
         userId,
         connectionId,
@@ -183,7 +183,7 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `${userId}#CONNECTION#${connectionId}#EXP#${index}`,
+                    id: `#ROOT${userId}#CONNECTION#${connectionId}#EXP#${index}`,
                     type: "Experience",
                     role: exp.role,
                     company: exp.company,
@@ -202,7 +202,7 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `${userId}#CONNECTION#${connectionId}#EDU#${index}`,
+                    id: `#ROOT${userId}#CONNECTION#${connectionId}#EDU#${index}`,
                     type: "Education",
                     degree: edu.degree,
                     school: edu.school,
@@ -221,7 +221,7 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `${userId}#CONNECTION#${connectionId}#CONTACT#${index}`,
+                    id: `#ROOT${userId}#CONNECTION#${connectionId}#CONTACT#${index}`,
                     type: "Contact",
                     contactType: contact.type,
                     value: contact.value,
