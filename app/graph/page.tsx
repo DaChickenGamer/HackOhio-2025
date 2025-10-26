@@ -35,16 +35,21 @@ type PersonData = {
   firstName: string;
   lastName: string;
 
-  education?: string[];
-  experience?: string;
+  education?: Array<{
+    degree: string;
+    school: string;
+    year: string;
+  }>;
+  experience?: Array<{
+    role: string;
+    company: string;
+    duration: string;
+  }>;
   skills?: string[];
-  contact?: {
-    email?: string;
-    phone?: string;
-    website?: string;
-    linkedin?: string;
-    github?: string;
-  };
+  contacts?: Array<{
+    type: string;
+    value: string;
+  }>;
   tags?: string[];
   notes?: string;
 
@@ -161,12 +166,21 @@ export default function GraphPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // education input + stacked educations
-  const [educationInput, setEducationInput] = useState("");
-  const [educations, setEducations] = useState<string[]>([]);
+  // education form state
+  const [degree, setDegree] = useState("");
+  const [school, setSchool] = useState("");
+  const [year, setYear] = useState("");
+  const [educations, setEducations] = useState<Array<{ degree: string; school: string; year: string }>>([]);
   
-  const [experience, setExperience] = useState("");
+  // experience form state
+  const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
+  const [duration, setDuration] = useState("");
+  const [experiences, setExperiences] = useState<Array<{ role: string; company: string; duration: string }>>([]);
+
   const [skills, setSkills] = useState("");
+  
+  // contacts form state
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
@@ -212,16 +226,16 @@ export default function GraphPage() {
         id,
         firstName,
         lastName,
-        education: educations.length ? educations : undefined,
-        experience: experience || undefined,
+        education: educations,
+        experience: experiences,
         skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
-        contact: {
-          email: email || undefined,
-          phone: phone || undefined,
-          website: website || undefined,
-          linkedin: linkedin || undefined,
-          github: github || undefined,
-        },
+        contacts: [
+          ...(email ? [{ type: "Email", value: email }] : []),
+          ...(phone ? [{ type: "Phone", value: phone }] : []),
+          ...(website ? [{ type: "Website", value: website }] : []),
+          ...(linkedin ? [{ type: "LinkedIn", value: linkedin }] : []),
+          ...(github ? [{ type: "GitHub", value: github }] : []),
+        ],
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: notes || undefined,
         label,
@@ -238,9 +252,14 @@ export default function GraphPage() {
 
     setFirstName("");
     setLastName("");
-  setEducationInput("");
-  setEducations([]);
-    setExperience("");
+    setDegree("");
+    setSchool("");
+    setYear("");
+    setEducations([]);
+    setRole("");
+    setCompany("");
+    setDuration("");
+    setExperiences([]);
     setSkills("");
     setEmail("");
     setPhone("");
@@ -426,24 +445,44 @@ export default function GraphPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs" style={{ color: THEME.muted }}>Education</label>
-              <input
-                value={educationInput}
-                onChange={(e) => setEducationInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const v = educationInput.trim();
-                    if (v) {
-                      setEducations((s) => [...s, v]);
-                      setEducationInput("");
-                    }
+              <label className="text-xs mb-2 block" style={{ color: THEME.muted }}>Education</label>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <input
+                  value={degree}
+                  onChange={(e) => setDegree(e.target.value)}
+                  placeholder="B.S. Computer Science"
+                  className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+                  style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+                />
+                <input
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  placeholder="Ohio State University"
+                  className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+                  style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+                />
+                <input
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  placeholder="2025"
+                  className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+                  style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (degree.trim() && school.trim()) {
+                    setEducations(eds => [...eds, { degree: degree.trim(), school: school.trim(), year: year.trim() }]);
+                    setDegree("");
+                    setSchool("");
+                    setYear("");
                   }
                 }}
-                placeholder="B.S. CSE, Ohio State"
-                className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-                style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-              />
+                className="w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                style={{ background: THEME.surface, borderColor: THEME.border, color: THEME.text }}
+              >
+                Add Education Entry
+              </button>
 
               {/* stacked educations */}
               {educations.length > 0 && (
@@ -453,7 +492,9 @@ export default function GraphPage() {
                       key={i}
                       className="px-2 py-1 bg-gray-800/40 rounded text-sm flex items-center justify-between"
                     >
-                      <div className="truncate pr-2">{e}</div>
+                      <div className="truncate pr-2">
+                        {e.degree} • {e.school} {e.year ? `(${e.year})` : ""}
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeEducation(i)}
@@ -468,16 +509,71 @@ export default function GraphPage() {
                 </div>
               )}
             </div>
+
             <div className="col-span-2">
-              <label className="text-xs" style={{ color: THEME.muted }}>Experience</label>
-              <textarea
-                value={experience}
-                onChange={(e) => setExperience(e.target.value)}
-                rows={3}
-                placeholder="Intern @ …; RA …"
-                className="w-full rounded-lg border px-3 py-2 outline-none resize-y glow-focus"
-                style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-              />
+              <label className="text-xs mb-2 block" style={{ color: THEME.muted }}>Experience</label>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <input
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  placeholder="Software Engineer"
+                  className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+                  style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+                />
+                <input
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  placeholder="Tech Corp"
+                  className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+                  style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+                />
+                <input
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  placeholder="2 years"
+                  className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+                  style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (role.trim() && company.trim()) {
+                    setExperiences(exps => [...exps, { role: role.trim(), company: company.trim(), duration: duration.trim() }]);
+                    setRole("");
+                    setCompany("");
+                    setDuration("");
+                  }
+                }}
+                className="w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                style={{ background: THEME.surface, borderColor: THEME.border, color: THEME.text }}
+              >
+                Add Experience Entry
+              </button>
+
+              {/* stacked experiences */}
+              {experiences.length > 0 && (
+                <div className="mt-2 flex flex-col gap-1">
+                  {experiences.map((exp, i) => (
+                    <div
+                      key={i}
+                      className="px-2 py-1 bg-gray-800/40 rounded text-sm flex items-center justify-between"
+                    >
+                      <div className="truncate pr-2">
+                        {exp.role} @ {exp.company} {exp.duration ? `(${exp.duration})` : ""}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExperiences(exps => exps.filter((_, idx) => idx !== i))}
+                        className="ml-2 text-xs px-2 py-0.5 rounded hover:bg-gray-700/30 delete-btn"
+                        style={{ background: "transparent", color: THEME.text }}
+                        aria-label={`Remove experience ${i + 1}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="col-span-2">
               <label className="text-xs" style={{ color: THEME.muted }}>Skills (comma-separated)</label>
