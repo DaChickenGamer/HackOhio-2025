@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "next font build"
+}
   },
   "dependencies": {
     "@clerk/nextjs": "^6.34.0",
