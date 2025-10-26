@@ -10,8 +10,8 @@ export async function getUser(userId: string) {
         new GetCommand({
             TableName: TABLE_NAME,
             Key: {
-                PK: `ROOT#${userId}`,
-                SK: `PERSON#${userId}`,
+                id: `ROOT#${userId}`,
+                type: `PERSON#${userId}`,
             },
         })
     );
@@ -20,8 +20,8 @@ export async function getUser(userId: string) {
 
 export async function putUser(userData: Person) {
     const item = {
-        id: `#ROOT${userData.id}`,
-        type: "Root",
+        id: `ROOT#${userData.id}`,
+        type: "PERSON",
         firstName: userData.firstName,
         lastName: userData.lastName,
         picture: userData.headshot ?? null,
@@ -44,8 +44,8 @@ export async function putUser(userData: Person) {
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `#ROOT${userData.id}#EXP#${index}`,
-                    type: "Experience",
+                    id: `ROOT#${userData.id}`,
+                    type: `EXP#${index}`,
                     role: exp.role,
                     company: exp.company,
                     duration: exp.duration ?? "",
@@ -62,8 +62,8 @@ export async function putUser(userData: Person) {
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `#ROOT${userData.id}#EDU#${index}`, // unique id for each education
-                    type: "Education",
+                    id: `ROOT#${userData.id}`,
+                    type: `EDU#${index}`,
                     degree: edu.degree,
                     school: edu.school,
                     year: edu.year ?? "",
@@ -80,8 +80,8 @@ export async function putUser(userData: Person) {
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `#ROOT${userData.id}#CONTACT#${index}`, // unique id for each contact
-                    type: "Contact",
+                    id: `ROOT#${userData.id}`,
+                    type: `CONTACT#${index}`,
                     contactType: contact.type,
                     value: contact.value,
                     userId: userData.id,
@@ -98,49 +98,52 @@ export async function getConnectionsFromUser(userId: string) {
     const result = await ddb.send(
         new QueryCommand({
             TableName: TABLE_NAME,
-            KeyConditionExpression: "PK = :pk",
+            KeyConditionExpression: "id = :id",
             ExpressionAttributeValues: {
-                ":pk": `ROOT#${userId}`,
+                ":id": `ROOT#${userId}`,
             },
         })
     );
 
     const items = result.Items || [];
 
-    const rootPersonItem = items.find(item => item.SK === `PERSON#${userId}`);
+    const rootPersonItem = items.find(item => item.type === "PERSON");
     if (!rootPersonItem) return null;
 
     const connections: any[] = [];
-
     const connectionsMap: Record<string, any> = {};
 
     for (const item of items) {
-        if (!item.SK.startsWith("CONNECTION#")) continue;
+        if (!item.type || !item.type.startsWith("CONNECTION#")) continue;
 
-        const parts = item.SK.split("#");
+        const parts = item.type.split("#");
         const connectionId = parts[1];
-        const type = parts[2];
+        const subType = parts[2];
 
         if (!connectionsMap[connectionId]) {
             connectionsMap[connectionId] = {
                 connectionId,
+                firstName: item.firstName || "",
+                lastName: item.lastName || "",
                 jobs: [],
                 education: [],
                 contacts: [],
                 notes: [],
+                skills: item.skills || [],
+                tags: item.tags || [],
                 ...item
             };
         }
 
-        if (!type) continue;
+        if (!subType) continue;
 
-        if (type === "JOB") {
+        if (subType === "JOB") {
             connectionsMap[connectionId].jobs.push(item);
-        } else if (type === "EDU") {
+        } else if (subType === "EDU") {
             connectionsMap[connectionId].education.push(item);
-        } else if (type === "CONTACT") {
+        } else if (subType === "CONTACT") {
             connectionsMap[connectionId].contacts.push(item);
-        } else if (type === "NOTE") {
+        } else if (subType === "NOTE") {
             connectionsMap[connectionId].notes.push(item);
         }
     }
@@ -148,7 +151,12 @@ export async function getConnectionsFromUser(userId: string) {
     const connectionsArray = Object.values(connectionsMap);
 
     return {
-        ...rootPersonItem,
+        id: rootPersonItem.id,
+        firstName: rootPersonItem.firstName || "",
+        lastName: rootPersonItem.lastName || "",
+        skills: rootPersonItem.skills || [],
+        tags: rootPersonItem.tags || [],
+        notes: rootPersonItem.notes || "",
         connections: connectionsArray
     };
 }
@@ -157,8 +165,8 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
     const connectionId = uuidv4();
 
     const item = {
-        id: `#ROOT${userId}#CONNECTION#${connectionId}`,
-        type: "Connection",
+        id: `ROOT#${userId}`,
+        type: `CONNECTION#${connectionId}`,
         userId,
         connectionId,
         firstName: connectionData.firstName,
@@ -183,8 +191,8 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `#ROOT${userId}#CONNECTION#${connectionId}#EXP#${index}`,
-                    type: "Experience",
+                    id: `ROOT#${userId}`,
+                    type: `CONNECTION#${connectionId}#EXP#${index}`,
                     role: exp.role,
                     company: exp.company,
                     duration: exp.duration ?? "",
@@ -202,8 +210,8 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `#ROOT${userId}#CONNECTION#${connectionId}#EDU#${index}`,
-                    type: "Education",
+                    id: `ROOT#${userId}`,
+                    type: `CONNECTION#${connectionId}#EDU#${index}`,
                     degree: edu.degree,
                     school: edu.school,
                     year: edu.year ?? "",
@@ -221,8 +229,8 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `#ROOT${userId}#CONNECTION#${connectionId}#CONTACT#${index}`,
-                    type: "Contact",
+                    id: `ROOT#${userId}`,
+                    type: `CONNECTION#${connectionId}#CONTACT#${index}`,
                     contactType: contact.type,
                     value: contact.value,
                     userId,
@@ -253,8 +261,8 @@ export async function updateConnection(userId: string, connectionId: string, upd
         new UpdateCommand({
             TableName: TABLE_NAME,
             Key: {
-                PK: `ROOT#${userId}`,
-                SK: `CONNECTION#${connectionId}`,
+                id: `ROOT#${userId}`,
+                type: `CONNECTION#${connectionId}`,
             },
             UpdateExpression: "SET " + updateExpressions.join(", "),
             ExpressionAttributeValues: expressionValues,
@@ -269,10 +277,13 @@ export async function deleteConnection(userId: string, connectionId: string) {
     const result = await ddb.send(
         new QueryCommand({
             TableName: TABLE_NAME,
-            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            KeyConditionExpression: "id = :id AND begins_with(#type, :type)",
+            ExpressionAttributeNames: {
+                "#type": "type"
+            },
             ExpressionAttributeValues: {
-                ":pk": `ROOT#${userId}`,
-                ":sk": `CONNECTION#${connectionId}`,
+                ":id": `ROOT#${userId}`,
+                ":type": `CONNECTION#${connectionId}`,
             },
         })
     );
@@ -286,8 +297,8 @@ export async function deleteConnection(userId: string, connectionId: string) {
     const deleteRequests = itemsToDelete.map(item => ({
         DeleteRequest: {
             Key: {
-                PK: item.PK,
-                SK: item.SK
+                id: item.id,
+                type: item.type
             }
         }
     }));
