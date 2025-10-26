@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 import {
   ReactFlow,
   addEdge,
@@ -53,10 +54,9 @@ type PersonData = {
   tags?: string[];
   notes?: string;
 
-  label?: string; // display fallback
+  label?: string;
 };
 
-// The node type React Flow manages
 type PersonNode = Node<PersonData, "person">;
 
 /* ===== Helpers ===== */
@@ -81,106 +81,159 @@ function ringCapacity(r: number) {
   const perSlot = NODE_DIAM + GAP;
   return Math.max(6, Math.floor((2 * Math.PI * radius) / perSlot));
 }
-function nextRingSlot(nonRootCount: number) {
-  let ring = 1;
-  let remaining = nonRootCount;
-  while (true) {
-    const cap = ringCapacity(ring);
-    if (remaining < cap) {
-      const angleStep = (2 * Math.PI) / cap;
-      const angle = remaining * angleStep;
-      const rad = ring * RING_STEP;
-      return { x: CENTER.x + rad * Math.cos(angle), y: CENTER.y + rad * Math.sin(angle) };
-    }
-    remaining -= cap;
-    ring += 1;
-  }
+
+function ringPosition(r: number, index: number, count: number, centerAngle = 0) {
+  if (r <= 0) return { x: CENTER.x, y: CENTER.y };
+  const rad = r * RING_STEP;
+  const capacity = Math.max(1, ringCapacity(r));
+  const angleStep = (2 * Math.PI) / Math.max(capacity, count);
+  const totalSpan = angleStep * (count - 1);
+  const startAngle = centerAngle - totalSpan / 2;
+  const angle = startAngle + index * angleStep;
+  return { x: CENTER.x + rad * Math.cos(angle), y: CENTER.y + rad * Math.sin(angle) };
 }
 
-/* ===== Node view (no headshot) ===== */
+function angleOfPos(pos: { x: number; y: number }) {
+  return Math.atan2(pos.y - CENTER.y, pos.x - CENTER.x);
+}
+
+/* ===== Node Component ===== */
 type PersonNodeProps = NodeProps<PersonNode>;
 const PersonCircleNode: React.FC<PersonNodeProps> = ({ data }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
   const name = fullName(data);
-  // compute gradient based on distance from root (data.distance, data.maxDistance)
   const distance = (data as any).distance ?? 0;
   const maxDistance = (data as any).maxDistance ?? 1;
   const ratio = maxDistance > 0 ? Math.min(1, distance / maxDistance) : 0;
-  // hue from cyan (190) -> purple (270)
   const hueA = Math.round(190 + 80 * ratio);
   const hueB = Math.round(220 + 80 * ratio);
   const colorA = `hsl(${hueA} 90% 55%)`;
   const colorB = `hsl(${hueB} 70% 50%)`;
+  
   return (
     <div
-      className="node-anim relative flex flex-col items-center justify-center w-24 h-24 rounded-full select-none transition-transform duration-300 will-change-transform overflow-hidden"
-        style={{
-        background: `linear-gradient(145deg, ${colorA} 0%, ${colorB} 100%)`,
-        border: `2px solid ${THEME.border}`,
-        boxShadow: `0 8px 24px rgba(34, 211, 238, 0.12)`,
-      }}
-      title={name}
+      className="relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
     >
       <div
-        className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold"
-        style={{ background: "#ffffffCC", color: "#0b0f14" }}
+        className="node-anim relative flex flex-col items-center justify-center w-24 h-24 rounded-full select-none transition-transform duration-300 will-change-transform overflow-hidden"
+        style={{
+          background: `linear-gradient(145deg, ${colorA} 0%, ${colorB} 100%)`,
+          border: `2px solid ${THEME.border}`,
+          boxShadow: `0 8px 24px rgba(34, 211, 238, 0.12)`,
+        }}
+        title={name}
       >
-        {initials(data)}
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold"
+          style={{ background: "#ffffffCC", color: "#0b0f14" }}
+        >
+          {initials(data)}
+        </div>
+
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="center-source"
+          style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, opacity: 0 }}
+        />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="center-target"
+          style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, opacity: 0 }}
+        />
       </div>
 
-      {/* single invisible center handles */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="center-source"
-        style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, opacity: 0 }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="center-target"
-        style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, opacity: 0 }}
-      />
+      {/* Tooltip */}
+      {showTooltip && (
+        <div
+          className="absolute z-50 p-3 rounded-lg shadow-xl text-xs pointer-events-none"
+          style={{
+            background: THEME.panel,
+            border: `1px solid ${THEME.border}`,
+            color: THEME.text,
+            minWidth: "200px",
+            left: "110%",
+            top: "50%",
+            transform: "translateY(-50%)",
+          }}
+        >
+          <div className="font-bold mb-2">{name}</div>
+          
+          {data.education && data.education.length > 0 && (
+            <div className="mb-2">
+              <div className="font-semibold" style={{ color: THEME.muted }}>Education:</div>
+              {data.education.map((edu, i) => (
+                <div key={i} className="text-xs">• {edu.degree} @ {edu.school}</div>
+              ))}
+            </div>
+          )}
+          
+          {data.experience && data.experience.length > 0 && (
+            <div className="mb-2">
+              <div className="font-semibold" style={{ color: THEME.muted }}>Experience:</div>
+              {data.experience.map((exp, i) => (
+                <div key={i} className="text-xs">• {exp.role} @ {exp.company}</div>
+              ))}
+            </div>
+          )}
+          
+          {data.skills && data.skills.length > 0 && (
+            <div className="mb-2">
+              <div className="font-semibold" style={{ color: THEME.muted }}>Skills:</div>
+              <div className="text-xs">{data.skills.join(", ")}</div>
+            </div>
+          )}
+          
+          {data.contacts && data.contacts.length > 0 && (
+            <div className="mb-2">
+              <div className="font-semibold" style={{ color: THEME.muted }}>Contacts:</div>
+              {data.contacts.map((contact, i) => (
+                <div key={i} className="text-xs">• {contact.type}: {contact.value}</div>
+              ))}
+            </div>
+          )}
+          
+          {data.tags && data.tags.length > 0 && (
+            <div className="mb-2">
+              <div className="font-semibold" style={{ color: THEME.muted }}>Tags:</div>
+              <div className="text-xs">{data.tags.join(", ")}</div>
+            </div>
+          )}
+          
+          {data.notes && (
+            <div>
+              <div className="font-semibold" style={{ color: THEME.muted }}>Notes:</div>
+              <div className="text-xs">{data.notes}</div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-/* ===== Initial graph ===== */
-const initialNodes: PersonNode[] = [
-  {
-    id: "root",
-    position: { x: CENTER.x - NODE_DIAM / 2, y: CENTER.y - NODE_DIAM / 2 },
-    type: "person",
-    draggable: false,
-    data: { id: "root", firstName: "Root", lastName: "", notes: "Central node", label: "Root" },
-  },
-];
-const initialEdges: Edge[] = [];
-
-/* ===== Page ===== */
+/* ===== Main Component ===== */
 export default function GraphPage() {
-  // Manage Node<PersonData>, not PersonData
-  const [nodes, setNodes, onNodesChange] = useNodesState<PersonNode>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { user, isLoaded } = useUser();
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [nodes, setNodes, onNodesChange] = useNodesState<PersonNode>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  // form state
+  // Form state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-
-  // education form state
   const [degree, setDegree] = useState("");
   const [school, setSchool] = useState("");
   const [year, setYear] = useState("");
   const [educations, setEducations] = useState<Array<{ degree: string; school: string; year: string }>>([]);
-  
-  // experience form state
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
   const [duration, setDuration] = useState("");
   const [experiences, setExperiences] = useState<Array<{ role: string; company: string; duration: string }>>([]);
-
   const [skills, setSkills] = useState("");
-  
-  // contacts form state
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
@@ -188,8 +241,128 @@ export default function GraphPage() {
   const [github, setGithub] = useState("");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
-
   const [connectToId, setConnectToId] = useState<string>("root");
+
+  // Load data from API on mount
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    async function loadData() {
+      try {
+        console.log('🔍 Fetching data from API...');
+        const response = await fetch('/api/connections');
+        
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response ok?:', response.ok);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ API Error:', errorText);
+          throw new Error(`Failed to fetch: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Data received:', data);
+        
+        // Handle case where data might be null or no connections exist
+        if (!data) {
+          console.log('⚠️ No data returned, using default root node');
+          setNodes([{
+            id: "root",
+            position: { x: CENTER.x - NODE_DIAM / 2, y: CENTER.y - NODE_DIAM / 2 },
+            type: "person",
+            draggable: false,
+            data: { id: "root", firstName: "Root", lastName: "", label: "Root" },
+          }]);
+          setDataLoaded(true);
+          return;
+        }
+    
+        // Create root node from returned data
+        const rootNode: PersonNode = {
+          id: "root",
+          position: { x: CENTER.x - NODE_DIAM / 2, y: CENTER.y - NODE_DIAM / 2 },
+          type: "person",
+          draggable: false,
+          data: {
+            id: "root",
+            firstName: data.firstName || "Root",
+            lastName: data.lastName || "",
+            skills: data.skills || [],
+            tags: data.tags || [],
+            notes: data.notes || "",
+            education: data.education || [],
+            experience: data.experience || [],
+            contacts: data.contacts || [],
+          },
+        };
+    
+        const loadedNodes: PersonNode[] = [rootNode];
+        const loadedEdges: Edge[] = [];
+    
+        // Add connections if they exist
+        const connections = data.connections || [];
+        console.log('📊 Found connections:', connections.length);
+        
+        if (connections.length > 0) {
+          connections.forEach((conn: any, idx: number) => {
+            const nodeId = conn.connectionId || `conn-${idx}`;
+            const pos = ringPosition(1, idx, connections.length, 0);
+            
+            console.log('➕ Adding connection:', conn.firstName, conn.lastName, nodeId);
+            
+            loadedNodes.push({
+              id: nodeId,
+              position: { x: pos.x - NODE_DIAM / 2, y: pos.y - NODE_DIAM / 2 },
+              type: "person",
+              draggable: false,
+              data: {
+                id: nodeId,
+                firstName: conn.firstName || "",
+                lastName: conn.lastName || "",
+                skills: conn.skills || [],
+                tags: conn.tags || [],
+                notes: conn.notes || "",
+                education: conn.education || [],
+                experience: conn.jobs || [],
+                contacts: conn.contacts || [],
+              },
+            });
+    
+            loadedEdges.push({
+              id: `e-root-${nodeId}`,
+              source: "root",
+              target: nodeId,
+              type: "straight",
+              animated: false,
+              style: { stroke: THEME.primary, strokeWidth: 2 },
+            });
+          });
+        }
+    
+        console.log('🎨 Final nodes:', loadedNodes.length);
+        console.log('🔗 Final edges:', loadedEdges.length);
+    
+        setNodes(loadedNodes);
+        setEdges(loadedEdges);
+        setDataLoaded(true);
+      } catch (error) {
+        console.error('❌ Failed to load data:', error);
+        // Fallback to default root node
+        setNodes([{
+          id: "root",
+          position: { x: CENTER.x - NODE_DIAM / 2, y: CENTER.y - NODE_DIAM / 2 },
+          type: "person",
+          draggable: false,
+          data: { id: "root", firstName: "Root", lastName: "", label: "Root" },
+        }]);
+        setDataLoaded(true);
+      }
+    }
+
+    loadData();
+  }, [isLoaded, setNodes, setEdges]);
+
   const nonRootNodes = useMemo(() => nodes.filter((n) => n.id !== "root"), [nodes]);
 
   const onConnect = useCallback(
@@ -200,82 +373,106 @@ export default function GraphPage() {
     [setEdges]
   );
 
-  const onAddNode = () => {
-    const id = `${Date.now()}`;
-    const label = `${firstName} ${lastName}`.trim() || `Person ${nonRootNodes.length + 1}`;
-  // place new node on ring based on its parent distance to root
-    const parent = nodes.find((n) => n.id === connectToId) || nodes.find((n) => n.id === "root");
-    const parentDistance = parent ? ((parent.data as any).distance ?? 0) : 0;
-    const newDistance = parentDistance + 1;
-    // siblings are existing children of the parent at the next distance
-    const siblings = nodes.filter((n) => {
-      const d = (n.data as any).distance ?? 999;
-      const connected = edges.some((e) => (String(e.source) === String(parent?.id) && String(e.target) === String(n.id)) || (String(e.target) === String(parent?.id) && String(e.source) === String(n.id)));
-      return d === newDistance && connected;
-    });
-    const siblingIndex = siblings.length;
-    const siblingCount = siblings.length + 1;
-    const parentAngle = parent ? angleOfPos(parent.position) : 0;
-    const pos = ringPosition(newDistance, siblingIndex, siblingCount, parentAngle);
-    const newNode: PersonNode = {
-      id,
-      position: { x: pos.x - NODE_DIAM / 2, y: pos.y - NODE_DIAM / 2 },
-      type: "person",
-      draggable: false,
-      data: {
-        id,
-        firstName,
-        lastName,
-        education: educations,
-        experience: experiences,
-        skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
-        contacts: [
-          ...(email ? [{ type: "Email", value: email }] : []),
-          ...(phone ? [{ type: "Phone", value: phone }] : []),
-          ...(website ? [{ type: "Website", value: website }] : []),
-          ...(linkedin ? [{ type: "LinkedIn", value: linkedin }] : []),
-          ...(github ? [{ type: "GitHub", value: github }] : []),
-        ],
-        tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: notes || undefined,
-        label,
-      },
+  const onAddNode = async () => {
+    const connectionData = {
+      firstName,
+      lastName,
+      education: educations,
+      experience: experiences,
+      skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
+      contacts: [
+        ...(email ? [{ type: "Email", value: email }] : []),
+        ...(phone ? [{ type: "Phone", value: phone }] : []),
+        ...(website ? [{ type: "Website", value: website }] : []),
+        ...(linkedin ? [{ type: "LinkedIn", value: linkedin }] : []),
+        ...(github ? [{ type: "GitHub", value: github }] : []),
+      ],
+      tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+      notes: notes || undefined,
     };
 
-    setNodes((ns) => [...ns, newNode]);
+    try {
+      const response = await fetch('/api/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(connectionData),
+      });
 
-    const target = connectToId || "root";
-    setEdges((es) => [
-      ...es,
-      { id: `e-${id}-${target}`, source: id, target, type: "straight", animated: false, style: { stroke: THEME.primary, strokeWidth: 2 } },
-    ]);
+      if (!response.ok) throw new Error('Failed to add connection');
 
-    setFirstName("");
-    setLastName("");
-    setDegree("");
-    setSchool("");
-    setYear("");
-    setEducations([]);
-    setRole("");
-    setCompany("");
-    setDuration("");
-    setExperiences([]);
-    setSkills("");
-    setEmail("");
-    setPhone("");
-    setWebsite("");
-    setLinkedin("");
-    setGithub("");
-    setTags("");
-    setNotes("");
+      const result = await response.json();
+      const nodeId = result.connection.connectionId;
+
+      // Add to graph
+      const parent = nodes.find((n) => n.id === connectToId) || nodes.find((n) => n.id === "root");
+      const parentDistance = parent ? ((parent.data as any).distance ?? 0) : 0;
+      const newDistance = parentDistance + 1;
+      const siblings = nodes.filter((n) => {
+        const d = (n.data as any).distance ?? 999;
+        const connected = edges.some((e) => (String(e.source) === String(parent?.id) && String(e.target) === String(n.id)) || (String(e.target) === String(parent?.id) && String(e.source) === String(n.id)));
+        return d === newDistance && connected;
+      });
+      const siblingIndex = siblings.length;
+      const siblingCount = siblings.length + 1;
+      const parentAngle = parent ? angleOfPos(parent.position) : 0;
+      const pos = ringPosition(newDistance, siblingIndex, siblingCount, parentAngle);
+
+      const newNode: PersonNode = {
+        id: nodeId,
+        position: { x: pos.x - NODE_DIAM / 2, y: pos.y - NODE_DIAM / 2 },
+        type: "person",
+        draggable: false,
+        data: {
+          id: nodeId,
+          firstName,
+          lastName,
+          education: educations,
+          experience: experiences,
+          skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
+          contacts: connectionData.contacts,
+          tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+          notes: notes || undefined,
+        },
+      };
+
+      setNodes((ns) => [...ns, newNode]);
+
+      const target = connectToId || "root";
+      setEdges((es) => [
+        ...es,
+        { id: `e-${nodeId}-${target}`, source: nodeId, target, type: "straight", animated: false, style: { stroke: THEME.primary, strokeWidth: 2 } },
+      ]);
+
+      // Reset form
+      setFirstName("");
+      setLastName("");
+      setDegree("");
+      setSchool("");
+      setYear("");
+      setEducations([]);
+      setRole("");
+      setCompany("");
+      setDuration("");
+      setExperiences([]);
+      setSkills("");
+      setEmail("");
+      setPhone("");
+      setWebsite("");
+      setLinkedin("");
+      setGithub("");
+      setTags("");
+      setNotes("");
+    } catch (error) {
+      console.error('Failed to add node:', error);
+      alert('Failed to add connection. Please try again.');
+    }
   };
 
-  // remove one education entry by index
   const removeEducation = (index: number) => {
     setEducations((s) => s.filter((_, i) => i !== index));
   };
 
-  // compute distances from root and annotate node.data with distance and maxDistance
+  // Distance calculation effect
   useEffect(() => {
     const adj = new Map<string, Set<string>>();
     for (const n of nodes) adj.set(n.id, new Set<string>());
@@ -305,11 +502,7 @@ export default function GraphPage() {
     const allDistances = Array.from(distances.values());
     const maxDistance = allDistances.length ? Math.max(...allDistances) : 0;
 
-    // bucket nodes by distance so we can place them evenly around rings
-    // Build parent relationships during BFS (parent of a node is the node that first discovered it)
     const parentOf = new Map<string, string>();
-    // We already filled distances via BFS above; we need to recompute parents similarly
-    // Re-run BFS to capture parents deterministically
     const q2: string[] = ["root"];
     const seen = new Set<string>(["root"]);
     let qi = 0;
@@ -324,7 +517,6 @@ export default function GraphPage() {
       }
     }
 
-    // bucket by distance and parent so children cluster near their parent
     const bucketsByParent = new Map<number, Map<string, string[]>>();
     for (const n of nodes) {
       const d = distances.has(n.id) ? distances.get(n.id)! : Infinity;
@@ -336,7 +528,6 @@ export default function GraphPage() {
       parentMap.get(parentId)!.push(n.id);
     }
 
-    // If any parent bucket exceeds the ring capacity, spill nodes to outer rings.
     const assignedBuckets = new Map<number, Map<string, string[]>>();
     const assignedRingOf = new Map<string, number>();
     for (const [finiteD, parentMap] of bucketsByParent.entries()) {
@@ -362,16 +553,16 @@ export default function GraphPage() {
       const cur = (n.data as any).distance ?? null;
       const curMax = (n.data as any).maxDistance ?? null;
 
-  const assignedRing = assignedRingOf.get(n.id) ?? finiteD;
-  const parentId = parentOf.get(n.id) ?? "root";
-  const parentNode = nodes.find((x) => x.id === parentId) || nodes.find((x) => x.id === "root");
-  const parentAngle = parentNode ? angleOfPos(parentNode.position) : 0;
+      const assignedRing = assignedRingOf.get(n.id) ?? finiteD;
+      const parentId = parentOf.get(n.id) ?? "root";
+      const parentNode = nodes.find((x) => x.id === parentId) || nodes.find((x) => x.id === "root");
+      const parentAngle = parentNode ? angleOfPos(parentNode.position) : 0;
 
-  const parentMap = assignedBuckets.get(assignedRing) || new Map();
-  const bucket = parentMap.get(parentId) || [];
-  const index = bucket.indexOf(n.id);
-  const count = bucket.length || 1;
-  const pos = ringPosition(assignedRing, Math.max(0, index), Math.max(1, count), parentAngle);
+      const parentMap = assignedBuckets.get(assignedRing) || new Map();
+      const bucket = parentMap.get(parentId) || [];
+      const index = bucket.indexOf(n.id);
+      const count = bucket.length || 1;
+      const pos = ringPosition(assignedRing, Math.max(0, index), Math.max(1, count), parentAngle);
       const newPos = { x: pos.x - NODE_DIAM / 2, y: pos.y - NODE_DIAM / 2 };
 
       const posChanged = n.position.x !== newPos.x || n.position.y !== newPos.y;
@@ -386,10 +577,17 @@ export default function GraphPage() {
     if (changed) setNodes(updated);
   }, [nodes, edges, setNodes]);
 
-  // Upcast once so XYFlow accepts the typed component
   const nodeTypes = {
     person: PersonCircleNode as unknown as React.ComponentType<NodeProps>,
   };
+
+  if (!isLoaded || !dataLoaded) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: THEME.bg, color: THEME.text }}>
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen w-full" style={{ background: THEME.bg, color: THEME.text }}>
@@ -426,7 +624,7 @@ export default function GraphPage() {
 
           <div>
             <label className="text-xs" style={{ color: THEME.muted }}>Connect to</label>
-              <select
+            <select
               value={connectToId}
               onChange={(e) => setConnectToId(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
@@ -484,7 +682,6 @@ export default function GraphPage() {
                 Add Education Entry
               </button>
 
-              {/* stacked educations */}
               {educations.length > 0 && (
                 <div className="mt-2 flex flex-col gap-1">
                   {educations.map((e, i) => (
@@ -550,7 +747,6 @@ export default function GraphPage() {
                 Add Experience Entry
               </button>
 
-              {/* stacked experiences */}
               {experiences.length > 0 && (
                 <div className="mt-2 flex flex-col gap-1">
                   {experiences.map((exp, i) => (
@@ -686,14 +882,10 @@ export default function GraphPage() {
               onConnect={onConnect}
               fitView
               proOptions={{ hideAttribution: true }}
-              // upcast once; keeps our component strongly typed internally
-              nodeTypes={{ person: PersonCircleNode as unknown as React.ComponentType<NodeProps> }}
+              nodeTypes={nodeTypes}
               defaultEdgeOptions={{ type: "straight" }}
               connectionLineType={ConnectionLineType.Straight}
-            >
-              {/* MiniMap removed per request */}
-              {/* Controls removed per request (view controls in bottom-right) */}
-            </ReactFlow>
+            />
           </div>
         </section>
       </div>
@@ -719,7 +911,6 @@ export default function GraphPage() {
           100% { background-position: 0% 50%; }
         }
 
-        /* Input glow on focus */
         input.glow-focus, textarea.glow-focus, select.glow-focus {
           transition: all 180ms ease-out;
         }
@@ -730,7 +921,6 @@ export default function GraphPage() {
                       0 1px 2px 0 rgba(203, 213, 225, 0.05);
         }
 
-        /* delete-button hover: shake + red outline */
         .delete-btn {
           transition: transform 120ms ease, box-shadow 120ms ease, outline-color 120ms ease;
           will-change: transform;
@@ -757,23 +947,4 @@ export default function GraphPage() {
       `}</style>
     </main>
   );
-}
-
-// compute a position on ring `r` (1..n). index is 0-based within the ring, count is total in ring
-// compute a position on ring `r` (1..n). index is 0-based within the cluster, count is total in cluster.
-// centerAngle (radians) allows clustering children around their parent angle.
-function ringPosition(r: number, index: number, count: number, centerAngle = 0) {
-  if (r <= 0) return { x: CENTER.x, y: CENTER.y };
-  const rad = r * RING_STEP;
-  const capacity = Math.max(1, ringCapacity(r));
-  // use capacity as max spacing to avoid overlap when many children
-  const angleStep = (2 * Math.PI) / Math.max(capacity, count);
-  const totalSpan = angleStep * (count - 1);
-  const startAngle = centerAngle - totalSpan / 2;
-  const angle = startAngle + index * angleStep;
-  return { x: CENTER.x + rad * Math.cos(angle), y: CENTER.y + rad * Math.sin(angle) };
-}
-
-function angleOfPos(pos: { x: number; y: number }) {
-  return Math.atan2(pos.y - CENTER.y, pos.x - CENTER.x);
 }

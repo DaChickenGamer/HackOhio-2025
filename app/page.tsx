@@ -12,6 +12,7 @@ export default function Home() {
   const testPerson: Person = {
     firstName: "John",
     lastName: "Doe",
+    headshot: "",
     id: "12345",
     education: [
       { 
