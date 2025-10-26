@@ -72,10 +72,16 @@ export async function GET(req: Request) {
       root: rootPerson,
       connections: connections 
     });
-  } catch (err: any) {
+} catch (err: unknown) {
     console.error("GET connections error:", err);
+    if (err instanceof Error) {
+      return NextResponse.json(
+        { error: "Failed to get connections", details: err.message },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
-      { error: "Failed to get connections", details: err.message },
+      { error: "Failed to get connections", details: "Unknown error" },
       { status: 500 }
     );
   }
@@ -133,13 +139,19 @@ export async function POST(req: Request) {
         const savedConnection = await putConnection(userId, connectionData);
         return NextResponse.json({ message: "Connection added", connection: savedConnection });
       }
-    } catch (err: any) {
-      console.error("POST request error:", err);
-      return NextResponse.json(
-        { error: "Failed to save data", details: err.message },
-        { status: 500 }
-      );
-    }
+    } catch (err: unknown) {
+        console.error("GET connections error:", err);
+        if (err instanceof Error) {
+          return NextResponse.json(
+            { error: "Failed to get connections", details: err.message },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json(
+          { error: "Failed to get connections", details: "Unknown error" },
+          { status: 500 }
+        );
+      }
   }
 
 export async function PATCH(req: Request) {
@@ -158,10 +170,16 @@ export async function PATCH(req: Request) {
 
     const updated = await updateConnection(userId, body.connectionId, body.updates);
     return NextResponse.json({ message: "Connection updated", updated });
-  } catch (err: any) {
-    console.error("PATCH connection error:", err);
+} catch (err: unknown) {
+    console.error("GET connections error:", err);
+    if (err instanceof Error) {
+      return NextResponse.json(
+        { error: "Failed to get connections", details: err.message },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
-      { error: "Failed to update connection", details: err.message },
+      { error: "Failed to get connections", details: "Unknown error" },
       { status: 500 }
     );
   }
@@ -184,10 +202,16 @@ export async function DELETE(req: Request) {
 
     await deleteConnection(userId, connectionId);
     return NextResponse.json({ message: "Connection deleted successfully" });
-  } catch (err: any) {
-    console.error("DELETE connection error:", err);
+} catch (err: unknown) {
+    console.error("GET connections error:", err);
+    if (err instanceof Error) {
+      return NextResponse.json(
+        { error: "Failed to get connections", details: err.message },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
-      { error: "Failed to delete connection", details: err.message },
+      { error: "Failed to get connections", details: "Unknown error" },
       { status: 500 }
     );
   }

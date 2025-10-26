@@ -31,8 +31,14 @@ export async function getFullUser(userId: string) {
     })
   );
 
+  type FullUserData = Omit<Person, "id"> & {
+    experience: Array<any>;
+    education: Array<any>;
+    contacts: Array<any>;
+  };
+
   const items = result.Items ?? [];
-  const userData: any = {
+  const userData: FullUserData = {
     experience: [],
     education: [],
     contacts: [],

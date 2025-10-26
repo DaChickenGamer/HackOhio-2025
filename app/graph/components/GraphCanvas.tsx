@@ -3,14 +3,16 @@
 import { useCallback } from "react";
 import { ReactFlow, addEdge, ConnectionLineType, type NodeProps, type Connection } from "@xyflow/react";
 import type { PersonNode } from "../types";
-import type { Edge } from "@xyflow/react";
+import type { Edge, NodeChange, EdgeChange } from "@xyflow/react";
 import { THEME } from "../utils/theme";
+import { NodeChange, EdgeChange } from "@xyflow/react";  // Import the appropriate types
+
 
 interface GraphCanvasProps {
   nodes: PersonNode[];
   edges: Edge[];
-  onNodesChange: any;
-  onEdgesChange: any;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
   setEdges: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   nodeTypes: Record<string, React.ComponentType<NodeProps>>;
 }

@@ -9,8 +9,8 @@ import type { PersonNode } from "../types";
 export function PersonCircleNode({ data }: NodeProps<PersonNode>) {
   const [showTooltip, setShowTooltip] = useState(false);
   const name = fullName(data);
-  const distance = (data as any).distance ?? 0;
-  const maxDistance = (data as any).maxDistance ?? 1;
+  const distance = data.distance ?? 0;
+  const maxDistance = data.maxDistance ?? 1;
   const ratio = maxDistance > 0 ? Math.min(1, distance / maxDistance) : 0;
   const hueA = Math.round(190 + 80 * ratio);
   const hueB = Math.round(220 + 80 * ratio);
