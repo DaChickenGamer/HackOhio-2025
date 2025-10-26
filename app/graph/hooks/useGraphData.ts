@@ -26,37 +26,29 @@ export function useGraphData(isLoaded: boolean) {
           throw new Error(`Failed to fetch connections: ${res.status}`);
         }
 
-        const data = JSON.parse(text);
+        const data = JSON.parse(text) as { root?: Person; connections?: Person[] };
         console.log("Connections data received:", data);
 
-        let rootPerson: Person = data?.root;
-        if (!rootPerson) {
-          console.warn("Root user not found, creating default root in DB...");
-          const createRes = await fetch("/api/connections", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: "root", firstName: "Root", lastName: "" }),
-          });
-          rootPerson = await createRes.json();
-        }
+        const rootPerson: Person = data.root || {
+          id: "root",
+          firstName: "Root",
+          lastName: "",
+          skills: [],
+          tags: [],
+          notes: "",
+          education: [],
+          experience: [],
+          contacts: [],
+          headshot: "",
+        };
 
+        // Root node
         const rootNode: PersonNode = {
           id: "root",
           position: { x: CENTER.x - NODE_DIAM / 2, y: CENTER.y - NODE_DIAM / 2 },
           type: "person",
           draggable: false,
-          data: {
-            id: rootPerson.id || "root",
-            firstName: rootPerson.firstName || "Root",
-            lastName: rootPerson.lastName || "",
-            skills: rootPerson.skills || [],
-            tags: rootPerson.tags || [],
-            notes: rootPerson.notes || "",
-            education: rootPerson.education || [],
-            experience: rootPerson.experience || [],
-            contacts: rootPerson.contacts || [],
-            headshot: rootPerson.headshot || "",
-          },
+          data: rootPerson,
         };
 
         const loadedNodes: PersonNode[] = [rootNode];
@@ -64,7 +56,7 @@ export function useGraphData(isLoaded: boolean) {
 
         const connections: Person[] = Array.isArray(data.connections) ? data.connections : [];
 
-        connections.forEach((conn: Person, idx: number) => {
+        connections.forEach((conn, idx) => {
           const nodeId = conn.id || `conn-${idx}`;
           const pos = ringPosition(1, idx, connections.length, 0);
 
@@ -73,18 +65,7 @@ export function useGraphData(isLoaded: boolean) {
             position: { x: pos.x - NODE_DIAM / 2, y: pos.y - NODE_DIAM / 2 },
             type: "person",
             draggable: false,
-            data: {
-              id: nodeId,
-              firstName: conn.firstName || "",
-              lastName: conn.lastName || "",
-              skills: conn.skills || [],
-              tags: conn.tags || [],
-              notes: conn.notes || "",
-              education: conn.education || [],
-              experience: conn.experience || [],
-              contacts: conn.contacts || [],
-              headshot: conn.headshot || "",
-            },
+            data: conn,
           });
 
           loadedEdges.push({
@@ -99,10 +80,10 @@ export function useGraphData(isLoaded: boolean) {
 
         setNodes(loadedNodes);
         setEdges(loadedEdges);
-        setDataLoaded(true);
       } catch (err) {
         console.error("Failed to load graph data:", err);
 
+        // Fallback to single root node
         setNodes([
           {
             id: "root",
@@ -113,6 +94,7 @@ export function useGraphData(isLoaded: boolean) {
           },
         ]);
         setEdges([]);
+      } finally {
         setDataLoaded(true);
       }
     }

@@ -6,6 +6,7 @@ import {
   putUser,
   updateConnection,
   deleteConnection,
+  getFullUser,
 } from "@/lib/dynamodb/users";
 
 async function getUserOrUnauthorized() {
@@ -21,9 +22,10 @@ export async function GET(req: Request) {
   if (errorResponse) return errorResponse;
 
   try {
-    let data = await getConnectionsFromUser(userId);
-
-    if (!data) {
+    // Get root user
+    const rootUserItem = await getFullUser(userId);
+    
+    if (!rootUserItem || !rootUserItem.firstName) {
       const user = await currentUser();
       if (!user) {
         return NextResponse.json({ error: "User session not initialized" }, { status: 401 });
@@ -45,10 +47,34 @@ export async function GET(req: Request) {
       };
 
       await putUser(rootUserData);
-      data = await getConnectionsFromUser(userId);
+      
+      // Return empty connections for now
+      return NextResponse.json({ 
+        root: rootUserData,
+        connections: []
+      });
     }
 
-    return NextResponse.json(data);
+    const connections = await getConnectionsFromUser(userId);
+    
+    // Transform rootUserItem to Person format
+    const rootPerson = {
+      id: userId,
+      firstName: rootUserItem.firstName || "",
+      lastName: rootUserItem.lastName || "",
+      headshot: rootUserItem.picture || "",
+      skills: rootUserItem.skills || [],
+      tags: rootUserItem.tags || [],
+      notes: rootUserItem.notes || "",
+      experience: rootUserItem.experience || [],
+      education: rootUserItem.education || [],
+      contacts: rootUserItem.contacts || [],
+    };
+
+    return NextResponse.json({ 
+      root: rootPerson,
+      connections: connections 
+    });
   } catch (err: any) {
     console.error("GET connections error:", err);
     return NextResponse.json(
