@@ -85,8 +85,8 @@ export function useGraphLayout(
     const updated = nodes.map((n) => {
       const d = distances.has(n.id) ? distances.get(n.id)! : Infinity;
       const finiteD = Number.isFinite(d) ? d : 999;
-      const cur = (n.data as any).distance ?? null;
-      const curMax = (n.data as any).maxDistance ?? null;
+      const cur = n.data.distance ?? null;
+      const curMax = n.data.maxDistance ?? null;
 
       const assignedRing = assignedRingOf.get(n.id) ?? finiteD;
       const parentId = parentOf.get(n.id) ?? "root";

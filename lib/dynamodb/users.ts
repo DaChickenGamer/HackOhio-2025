@@ -31,8 +31,14 @@ export async function getFullUser(userId: string) {
     })
   );
 
+  type FullUserData = Omit<Person, "id"> & {
+    experience: Array<any>;
+    education: Array<any>;
+    contacts: Array<any>;
+  };
+
   const items = result.Items ?? [];
-  const userData: any = {
+  const userData: FullUserData = {
     experience: [],
     education: [],
     contacts: [],
@@ -113,6 +119,7 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
     const now = new Date().toISOString();
   
     // main connection item
+    console.log(connectionData.parentId)
     const connectionItem = {
       id: `CONNECTION#${connectionId}`,
       type: `PERSON#${connectionId}`,
@@ -137,22 +144,23 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
   
     // helper to create nested items as separate PKs
     const putNested = async (items: any[], prefix: string) => {
-      for (const item of items ?? []) {
+        for (const item of items ?? []) {
         const nestedId = uuidv4();
         await ddb.send(
-          new PutCommand({
+            new PutCommand({
             TableName: TABLE_NAME,
             Item: {
-              id: `${prefix}#${nestedId}`, // NEW PK for each nested item
-              type: `${prefix}#${nestedId}`,
-              connectionId,
-              userId,
-              updatedAt: now,
-              ...item,
+                id: `${prefix}#${nestedId}`, // Keep separate PK for each nested item
+                type: `${prefix}#${nestedId}`,
+                connectionId,
+                userId,
+                parentId: connectionData.parentId || "root", // FIXED: Add parentId here
+                updatedAt: now,
+                ...item,
             },
-          })
+            })
         );
-      }
+        }
     };
   
     await putNested(connectionData.experience ?? [], "EXP");
