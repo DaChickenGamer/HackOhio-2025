@@ -24,10 +24,9 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
   const [duration, setDuration] = useState("");
   const [experiences, setExperiences] = useState<Array<{ role: string; company: string; duration: string }>>([]);
   const [skills, setSkills] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [website, setWebsite] = useState("");
-  const [linkedin, setLinkedin] = useState("");
+  const [contacts, setContacts] = useState<Array<{ name: string; link: string }>>([]);
+  const [contactName, setContactName] = useState("");
+  const [contactLink, setContactLink] = useState("");
   const [github, setGithub] = useState("");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
@@ -41,10 +40,7 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
       experience: experiences,
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
       contacts: [
-        ...(email ? [{ type: "Email", value: email }] : []),
-        ...(phone ? [{ type: "Phone", value: phone }] : []),
-        ...(website ? [{ type: "Website", value: website }] : []),
-        ...(linkedin ? [{ type: "LinkedIn", value: linkedin }] : []),
+        ...contacts.map((c) => ({ type: c.name, value: c.link })),
         ...(github ? [{ type: "GitHub", value: github }] : []),
       ],
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
@@ -105,10 +101,9 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
       setDuration("");
       setExperiences([]);
       setSkills("");
-      setEmail("");
-      setPhone("");
-      setWebsite("");
-      setLinkedin("");
+      setContacts([]);
+      setContactName("");
+      setContactLink("");
       setGithub("");
       setTags("");
       setNotes("");
@@ -167,205 +162,219 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <label className="text-xs mb-2 block" style={{ color: THEME.muted }}>Education</label>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <input
-              value={degree}
-              onChange={(e) => setDegree(e.target.value)}
-              placeholder="B.S. CS"
-              className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-              style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-            />
-            <input
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
-              placeholder="OSU"
-              className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-              style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-            />
-            <input
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              placeholder="2025"
-              className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-              style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-            />
+      {/* Education section */}
+      <div className="col-span-2">
+        <label className="text-xs mb-2 block" style={{ color: THEME.muted }}>Education</label>
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <input
+            value={degree}
+            onChange={(e) => setDegree(e.target.value)}
+            placeholder="B.S. CS"
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
+          <input
+            value={school}
+            onChange={(e) => setSchool(e.target.value)}
+            placeholder="OSU"
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
+          <input
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            placeholder="2025"
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
+        </div>
+        <button
+          onClick={() => {
+            if (degree.trim() && school.trim()) {
+              setEducations(eds => [...eds, { degree: degree.trim(), school: school.trim(), year: year.trim() }]);
+              setDegree("");
+              setSchool("");
+              setYear("");
+            }
+          }}
+          className="w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          style={{ background: THEME.surface, borderColor: THEME.border, color: THEME.text }}
+        >
+          Add Education
+        </button>
+
+        {educations.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            {educations.map((e, i) => (
+              <div key={i} className="px-2 py-1 bg-gray-800/40 rounded text-sm flex items-center justify-between">
+                <div className="truncate pr-2">{e.degree} • {e.school} {e.year ? `(${e.year})` : ""}</div>
+                <button
+                  onClick={() => setEducations(eds => eds.filter((_, idx) => idx !== i))}
+                  className="ml-2 text-xs px-2 py-0.5 rounded hover:bg-gray-700/30 delete-btn"
+                  style={{ background: "transparent", color: THEME.text }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
-          <button
-            onClick={() => {
-              if (degree.trim() && school.trim()) {
-                setEducations(eds => [...eds, { degree: degree.trim(), school: school.trim(), year: year.trim() }]);
-                setDegree("");
-                setSchool("");
-                setYear("");
-              }
-            }}
-            className="w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-            style={{ background: THEME.surface, borderColor: THEME.border, color: THEME.text }}
-          >
-            Add Education
-          </button>
+        )}
+      </div>
 
-          {educations.length > 0 && (
-            <div className="mt-2 flex flex-col gap-1">
-              {educations.map((e, i) => (
-                <div key={i} className="px-2 py-1 bg-gray-800/40 rounded text-sm flex items-center justify-between">
-                  <div className="truncate pr-2">{e.degree} • {e.school} {e.year ? `(${e.year})` : ""}</div>
-                  <button
-                    onClick={() => setEducations(eds => eds.filter((_, idx) => idx !== i))}
-                    className="ml-2 text-xs px-2 py-0.5 rounded hover:bg-gray-700/30 delete-btn"
-                    style={{ background: "transparent", color: THEME.text }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Experience section */}
+      <div className="col-span-2">
+        <label className="text-xs mb-2 block" style={{ color: THEME.muted }}>Experience</label>
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <input
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="Engineer"
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
+          <input
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Tech Corp"
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
+          <input
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="2 years"
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
         </div>
+        <button
+          onClick={() => {
+            if (role.trim() && company.trim()) {
+              setExperiences(exps => [...exps, { role: role.trim(), company: company.trim(), duration: duration.trim() }]);
+              setRole("");
+              setCompany("");
+              setDuration("");
+            }
+          }}
+          className="w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          style={{ background: THEME.surface, borderColor: THEME.border, color: THEME.text }}
+        >
+          Add Experience
+        </button>
 
-        <div className="col-span-2">
-          <label className="text-xs mb-2 block" style={{ color: THEME.muted }}>Experience</label>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <input
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder="Engineer"
-              className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-              style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-            />
-            <input
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Tech Corp"
-              className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-              style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-            />
-            <input
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              placeholder="2 years"
-              className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-              style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-            />
+        {experiences.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            {experiences.map((exp, i) => (
+              <div key={i} className="px-2 py-1 bg-gray-800/40 rounded text-sm flex items-center justify-between">
+                <div className="truncate pr-2">{exp.role} @ {exp.company} {exp.duration ? `(${exp.duration})` : ""}</div>
+                <button
+                  onClick={() => setExperiences(exps => exps.filter((_, idx) => idx !== i))}
+                  className="ml-2 text-xs px-2 py-0.5 rounded hover:bg-gray-700/30 delete-btn"
+                  style={{ background: "transparent", color: THEME.text }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
-          <button
-            onClick={() => {
-              if (role.trim() && company.trim()) {
-                setExperiences(exps => [...exps, { role: role.trim(), company: company.trim(), duration: duration.trim() }]);
-                setRole("");
-                setCompany("");
-                setDuration("");
-              }
-            }}
-            className="w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-            style={{ background: THEME.surface, borderColor: THEME.border, color: THEME.text }}
-          >
-            Add Experience
-          </button>
+        )}
+      </div>
 
-          {experiences.length > 0 && (
-            <div className="mt-2 flex flex-col gap-1">
-              {experiences.map((exp, i) => (
-                <div key={i} className="px-2 py-1 bg-gray-800/40 rounded text-sm flex items-center justify-between">
-                  <div className="truncate pr-2">{exp.role} @ {exp.company} {exp.duration ? `(${exp.duration})` : ""}</div>
-                  <button
-                    onClick={() => setExperiences(exps => exps.filter((_, idx) => idx !== i))}
-                    className="ml-2 text-xs px-2 py-0.5 rounded hover:bg-gray-700/30 delete-btn"
-                    style={{ background: "transparent", color: THEME.text }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Contact section */}
+      <div className="col-span-2">
+        <label className="text-xs mb-2 block" style={{ color: THEME.muted }}>Contacts</label>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <input
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            placeholder="Type (e.g., Email, Portfolio)"
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
+          <input
+            value={contactLink}
+            onChange={(e) => setContactLink(e.target.value)}
+            placeholder="https://..."
+            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+          />
         </div>
+        <button
+          onClick={() => {
+            if (contactName.trim() && contactLink.trim()) {
+              setContacts(cs => [...cs, { name: contactName.trim(), link: contactLink.trim() }]);
+              setContactName("");
+              setContactLink("");
+            }
+          }}
+          className="w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          style={{ background: THEME.surface, borderColor: THEME.border, color: THEME.text }}
+        >
+          Add Contact
+        </button>
 
-        <div className="col-span-2">
-          <label className="text-xs" style={{ color: THEME.muted }}>Skills (comma-separated)</label>
-          <input
-            value={skills}
-            onChange={(e) => setSkills(e.target.value)}
-            placeholder="React, TypeScript"
-            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
+        {contacts.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            {contacts.map((c, i) => (
+              <div key={i} className="px-2 py-1 bg-gray-800/40 rounded text-sm flex items-center justify-between">
+                <div className="truncate pr-2">{c.name}: {c.link}</div>
+                <button
+                  onClick={() => setContacts(cs => cs.filter((_, idx) => idx !== i))}
+                  className="ml-2 text-xs px-2 py-0.5 rounded hover:bg-gray-700/30 delete-btn"
+                  style={{ background: "transparent", color: THEME.text }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        <div>
-          <label className="text-xs" style={{ color: THEME.muted }}>Email</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="user@domain.com"
-            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
-        <div>
-          <label className="text-xs" style={{ color: THEME.muted }}>Phone</label>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="(555) 123-4567"
-            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
-        <div>
-          <label className="text-xs" style={{ color: THEME.muted }}>Website</label>
-          <input
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            placeholder="https://me.dev"
-            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
-        <div>
-          <label className="text-xs" style={{ color: THEME.muted }}>LinkedIn</label>
-          <input
-            value={linkedin}
-            onChange={(e) => setLinkedin(e.target.value)}
-            placeholder="linkedin.com/in/..."
-            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="text-xs" style={{ color: THEME.muted }}>GitHub</label>
-          <input
-            value={github}
-            onChange={(e) => setGithub(e.target.value)}
-            placeholder="github.com/..."
-            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="text-xs" style={{ color: THEME.muted }}>Tags (comma-separated)</label>
-          <input
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="backend, ml"
-            className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="text-xs" style={{ color: THEME.muted }}>Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Extra details…"
-            className="w-full rounded-lg border px-3 py-2 outline-none resize-y glow-focus"
-            style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-          />
-        </div>
+      {/* Skills, GitHub, Tags, Notes remain unchanged */}
+      <div className="col-span-2">
+        <label className="text-xs" style={{ color: THEME.muted }}>Skills (comma-separated)</label>
+        <input
+          value={skills}
+          onChange={(e) => setSkills(e.target.value)}
+          placeholder="React, TypeScript"
+          className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+          style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+        />
+      </div>
+
+      <div className="col-span-2">
+        <label className="text-xs" style={{ color: THEME.muted }}>GitHub</label>
+        <input
+          value={github}
+          onChange={(e) => setGithub(e.target.value)}
+          placeholder="github.com/..."
+          className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+          style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+        />
+      </div>
+
+      <div className="col-span-2">
+        <label className="text-xs" style={{ color: THEME.muted }}>Tags (comma-separated)</label>
+        <input
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          placeholder="backend, ml"
+          className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
+          style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+        />
+      </div>
+
+      <div className="col-span-2">
+        <label className="text-xs" style={{ color: THEME.muted }}>Notes</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          placeholder="Extra details…"
+          className="w-full rounded-lg border px-3 py-2 outline-none resize-y glow-focus"
+          style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
+        />
       </div>
 
       <button
