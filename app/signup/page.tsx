@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, ChangeEvent, FormEvent } from "react";
+import HamburgerMenu from "../components/HamburgerMenu";
 
 interface FormData {
   name: string;
@@ -104,6 +105,7 @@ export default function signup() {
             Sign Up
           </button>
         </form>
+        <HamburgerMenu />
 
         {/* Added hyperlink below the form */}
         <p className="text-center text-sm text-gray-500 mt-4">
