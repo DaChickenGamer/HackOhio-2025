@@ -11,12 +11,13 @@ import { useGraphData } from "./hooks/useGraphData";
 import { useGraphLayout } from "./hooks/useGraphLayout";
 import { PersonForm } from "./components/PersonForm";
 import { GraphCanvas } from "./components/GraphCanvas";
+import { PersonNode } from "./types";
 
 export default function GraphPage() {
   const { isLoaded } = useUser();
   const { nodes: initialNodes, edges: initialEdges, dataLoaded } = useGraphData(isLoaded);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes || []);
+  const [nodes, setNodes, onNodesChange] = useNodesState<PersonNode>(initialNodes || []);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges || []);
 
   // Sync nodes & edges once data is loaded

@@ -16,27 +16,9 @@ export type PersonData = {
   label?: string;
   headshot?: string;
   parentId?: string;
+
+  distance?: number;
+  maxDistance?: number;
 };
 
 export type PersonNode = Node<PersonData, "person">;
-
-export type FormData = {
-  firstName: string;
-  lastName: string;
-  degree: string;
-  school: string;
-  year: string;
-  educations: Array<{ degree: string; school: string; year: string }>;
-  role: string;
-  company: string;
-  duration: string;
-  experiences: Array<{ role: string; company: string; duration: string }>;
-  skills: string;
-  email: string;
-  phone: string;
-  website: string;
-  linkedin: string;
-  github: string;
-  tags: string;
-  notes: string;
-};

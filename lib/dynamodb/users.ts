@@ -2,9 +2,14 @@ import { GetCommand, PutCommand, UpdateCommand, QueryCommand, BatchWriteCommand 
 import { ddb } from "./client";
 import { Person } from "@/types/person";
 import { v4 as uuidv4 } from "uuid";
+import { Experience } from "@/types/experience";
+import { Education } from "@/types/education";
+import { Contact } from "@/types/contact";
 
 const TABLE_NAME = process.env.DYNAMO_TABLE!;
 const CONNECTIONS_GSI = "userId-index";
+
+type NestedItem = Experience | Education | Contact;
 
 // -------------------- USER --------------------
 export async function getUser(userId: string) {
@@ -32,35 +37,38 @@ export async function getFullUser(userId: string) {
   );
 
   type FullUserData = Omit<Person, "id"> & {
-    experience: Array<any>;
-    education: Array<any>;
-    contacts: Array<any>;
+    experience: Array<Experience>;
+    education: Array<Education>;
+    contacts: Array<Contact>;
   };
 
   const items = result.Items ?? [];
-  const userData: FullUserData = {
-    experience: [],
-    education: [],
-    contacts: [],
-  };
+
+const userData: FullUserData = {
+  headshot: "",       
+  firstName: "",     
+  experience: [],     
+  education: [],    
+  contacts: [], 
+};
 
   for (const item of items) {
     if (item.type === `PERSON#${userId}`) {
       userData.firstName = item.firstName;
       userData.lastName = item.lastName;
-      userData.picture = item.picture;
+      userData.headshot = item.picture
       userData.skills = item.skills;
       userData.tags = item.tags;
       userData.notes = item.notes;
     } else if (item.type.startsWith("EXP#")) {
       const { id, type, userId: _, updatedAt, ...cleanItem } = item;
-      userData.experience.push(cleanItem);
+      userData.experience.push(cleanItem as Experience);
     } else if (item.type.startsWith("EDU#")) {
       const { id, type, userId: _, updatedAt, ...cleanItem } = item;
-      userData.education.push(cleanItem);
+      userData.education.push(cleanItem as Education);
     } else if (item.type.startsWith("CONTACT#")) {
       const { id, type, userId: _, updatedAt, ...cleanItem } = item;
-      userData.contacts.push(cleanItem);
+      userData.contacts.push(cleanItem as Contact);
     }
   }
 
@@ -88,7 +96,7 @@ export async function putUser(userData: Person) {
     })
   );
 
-  const putNested = async (items: any[], prefix: string) => {
+  const putNested = async (items: NestedItem[], prefix: string) => {
     for (const item of items ?? []) {
       const nestedId = uuidv4();
       await ddb.send(
@@ -142,19 +150,18 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
       })
     );
   
-    // helper to create nested items as separate PKs
-    const putNested = async (items: any[], prefix: string) => {
+    const putNested = async (items: NestedItem[], prefix: string) => {
         for (const item of items ?? []) {
         const nestedId = uuidv4();
         await ddb.send(
             new PutCommand({
             TableName: TABLE_NAME,
             Item: {
-                id: `${prefix}#${nestedId}`, // Keep separate PK for each nested item
+                id: `${prefix}#${nestedId}`,
                 type: `${prefix}#${nestedId}`,
                 connectionId,
                 userId,
-                parentId: connectionData.parentId || "root", // FIXED: Add parentId here
+                parentId: connectionData.parentId || "root", 
                 updatedAt: now,
                 ...item,
             },
@@ -169,6 +176,15 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
   
     return { ...connectionItem, connectionId };
   }
+
+  type FullConnection = Omit<Person, "id"> & {
+    id: string;
+    connectionId: string;
+    experience: Experience[];
+    education: Education[];
+    contacts: Contact[];
+  };
+
   
 // -------------------- GET CONNECTIONS --------------------
 export async function getConnectionsFromUser(userId: string) {
@@ -183,27 +199,28 @@ export async function getConnectionsFromUser(userId: string) {
   );
 
   const items = result.Items ?? [];
-  const connectionsMap: Record<string, any> = {};
+  const connectionsMap: Record<string, FullConnection> = {};
 
   for (const item of items) {
     const connectionId = item.connectionId;
     if (!connectionId) continue;
 
     if (!connectionsMap[connectionId]) {
-      connectionsMap[connectionId] = {
-        id: connectionId,
-        parentId: item.parentId || "root",
-        firstName: "",
-        lastName: "",
-        headshot: "",
-        skills: [],
-        tags: [],
-        notes: "",
-        experience: [],
-        education: [],
-        contacts: [],
-      };
-    }
+        connectionsMap[connectionId] = {
+          id: connectionId,
+          parentId: item.parentId || "root",
+          firstName: "",
+          lastName: "",
+          headshot: "",
+          skills: [],
+          tags: [],
+          notes: "",
+          experience: [],
+          education: [],
+          contacts: [],
+          connectionId,
+        };
+      }
 
     const entry = connectionsMap[connectionId];
 
@@ -216,31 +233,40 @@ export async function getConnectionsFromUser(userId: string) {
       entry.notes = item.notes ?? "";
     } else if (item.type.startsWith("EXP#")) {
       const { id, type, userId: _, connectionId: __, updatedAt, ...cleanItem } = item;
-      entry.experience.push(cleanItem);
+      entry.experience.push(cleanItem as Experience);
     } else if (item.type.startsWith("EDU#")) {
       const { id, type, userId: _, connectionId: __, updatedAt, ...cleanItem } = item;
-      entry.education.push(cleanItem);
+      entry.education.push(cleanItem as Education);
     } else if (item.type.startsWith("CONTACT#")) {
       const { id, type, userId: _, connectionId: __, updatedAt, ...cleanItem } = item;
-      entry.contacts.push(cleanItem);
+      entry.contacts.push(cleanItem as Contact);
     }
   }
 
   return Object.values(connectionsMap);
 }
+type ConnectionUpdateFields = Partial<Omit<FullConnection, "id" | "connectionId" | "experience" | "education" | "contacts">>;
 
 // -------------------- UPDATE CONNECTION --------------------
-export async function updateConnection(userId: string, connectionId: string, updates: Record<string, any>) {
+type DynamoValue = string | number | boolean | Array<string | number | boolean>;
+
+export async function updateConnection(
+  userId: string,
+  connectionId: string,
+  updates: Partial<Omit<FullConnection, "id" | "connectionId" | "experience" | "education" | "contacts">>
+) {
   const pk = `CONNECTION#${connectionId}`;
   const now = new Date().toISOString();
 
   const updateExpressions: string[] = [];
-  const expressionValues: Record<string, any> = {};
+  const expressionValues: Record<string, DynamoValue> = {};
 
   Object.entries(updates).forEach(([key, value], idx) => {
-    const placeholder = `:val${idx}`;
-    updateExpressions.push(`${key} = ${placeholder}`);
-    expressionValues[placeholder] = value;
+    if (value !== undefined) {
+      const placeholder = `:val${idx}`;
+      updateExpressions.push(`${key} = ${placeholder}`);
+      expressionValues[placeholder] = value as DynamoValue;
+    }
   });
 
   updateExpressions.push("updatedAt = :updatedAt");
