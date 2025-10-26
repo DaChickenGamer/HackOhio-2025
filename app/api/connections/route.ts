@@ -17,7 +17,7 @@ async function getUserOrUnauthorized() {
   return { userId };
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   const { errorResponse, userId } = await getUserOrUnauthorized();
   if (errorResponse) return errorResponse;
 
@@ -53,12 +53,11 @@ export async function GET(req: Request) {
       });
     }
 
-    // Transform rootUserItem to Person format
     const rootPerson = {
       id: userId,
       firstName: rootUserItem.firstName || "",
       lastName: rootUserItem.lastName || "",
-      headshot: rootUserItem.picture || "",
+      headshot: rootUserItem.headshot || "",
       skills: rootUserItem.skills || [],
       tags: rootUserItem.tags || [],
       notes: rootUserItem.notes || "",
