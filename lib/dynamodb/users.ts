@@ -1,10 +1,11 @@
 import { GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb } from "./client";
-import { Person } from "@/types/person"
+import { Person } from "@/types/person";
 import { v4 as uuidv4 } from "uuid";
 
 const TABLE_NAME = process.env.DYNAMO_TABLE!;
 
+// -------------------- USER --------------------
 export async function getUser(userId: string) {
     const result = await ddb.send(
         new GetCommand({
@@ -21,7 +22,7 @@ export async function getUser(userId: string) {
 export async function putUser(userData: Person) {
     const item = {
         id: `ROOT#${userData.id}`,
-        type: "PERSON",
+        type: `PERSON#${userData.id}`,
         firstName: userData.firstName,
         lastName: userData.lastName,
         picture: userData.headshot ?? null,
@@ -38,8 +39,7 @@ export async function putUser(userData: Person) {
         })
     );
 
-    for (const exp of (userData.experience ?? [])) {
-        const index = (userData.experience ?? []).indexOf(exp);
+    for (const [index, exp] of (userData.experience ?? []).entries()) {
         await ddb.send(
             new PutCommand({
                 TableName: TABLE_NAME,
@@ -56,8 +56,7 @@ export async function putUser(userData: Person) {
         );
     }
 
-    for (const edu of (userData.education ?? [])) {
-        const index = (userData.education ?? []).indexOf(edu);
+    for (const [index, edu] of (userData.education ?? []).entries()) {
         await ddb.send(
             new PutCommand({
                 TableName: TABLE_NAME,
@@ -74,8 +73,7 @@ export async function putUser(userData: Person) {
         );
     }
 
-    for (const contact of (userData.contacts ?? [])) {
-        const index = (userData.contacts ?? []).indexOf(contact);
+    for (const [index, contact] of (userData.contacts ?? []).entries()) {
         await ddb.send(
             new PutCommand({
                 TableName: TABLE_NAME,
@@ -94,79 +92,15 @@ export async function putUser(userData: Person) {
     return item;
 }
 
-export async function getConnectionsFromUser(userId: string) {
-    const result = await ddb.send(
-        new QueryCommand({
-            TableName: TABLE_NAME,
-            KeyConditionExpression: "id = :id",
-            ExpressionAttributeValues: {
-                ":id": `ROOT#${userId}`,
-            },
-        })
-    );
-
-    const items = result.Items || [];
-
-    const rootPersonItem = items.find(item => item.type === "PERSON");
-    if (!rootPersonItem) return null;
-
-    const connections: any[] = [];
-    const connectionsMap: Record<string, any> = {};
-
-    for (const item of items) {
-        if (!item.type || !item.type.startsWith("CONNECTION#")) continue;
-
-        const parts = item.type.split("#");
-        const connectionId = parts[1];
-        const subType = parts[2];
-
-        if (!connectionsMap[connectionId]) {
-            connectionsMap[connectionId] = {
-                connectionId,
-                firstName: item.firstName || "",
-                lastName: item.lastName || "",
-                jobs: [],
-                education: [],
-                contacts: [],
-                notes: [],
-                skills: item.skills || [],
-                tags: item.tags || [],
-                ...item
-            };
-        }
-
-        if (!subType) continue;
-
-        if (subType === "JOB") {
-            connectionsMap[connectionId].jobs.push(item);
-        } else if (subType === "EDU") {
-            connectionsMap[connectionId].education.push(item);
-        } else if (subType === "CONTACT") {
-            connectionsMap[connectionId].contacts.push(item);
-        } else if (subType === "NOTE") {
-            connectionsMap[connectionId].notes.push(item);
-        }
-    }
-
-    const connectionsArray = Object.values(connectionsMap);
-
-    return {
-        id: rootPersonItem.id,
-        firstName: rootPersonItem.firstName || "",
-        lastName: rootPersonItem.lastName || "",
-        skills: rootPersonItem.skills || [],
-        tags: rootPersonItem.tags || [],
-        notes: rootPersonItem.notes || "",
-        connections: connectionsArray
-    };
-}
-
+// -------------------- CONNECTIONS --------------------
 export async function putConnection(userId: string, connectionData: Omit<Person, "id">) {
     const connectionId = uuidv4();
+    const pk = `ROOT#${userId}#CONNECTION#${connectionId}`;
 
+    // Root connection item
     const item = {
-        id: `ROOT#${userId}`,
-        type: `CONNECTION#${connectionId}`,
+        id: pk,
+        type: `PERSON#${connectionId}`,
         userId,
         connectionId,
         firstName: connectionData.firstName,
@@ -185,14 +119,14 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
         })
     );
 
-    for (const exp of (connectionData.experience ?? [])) {
-        const index = (connectionData.experience ?? []).indexOf(exp);
+    // Experience
+    for (const [index, exp] of (connectionData.experience ?? []).entries()) {
         await ddb.send(
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `ROOT#${userId}`,
-                    type: `CONNECTION#${connectionId}#EXP#${index}`,
+                    id: pk,
+                    type: `EXP#${index}`,
                     role: exp.role,
                     company: exp.company,
                     duration: exp.duration ?? "",
@@ -204,14 +138,14 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
         );
     }
 
-    for (const edu of (connectionData.education ?? [])) {
-        const index = (connectionData.education ?? []).indexOf(edu);
+    // Education
+    for (const [index, edu] of (connectionData.education ?? []).entries()) {
         await ddb.send(
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `ROOT#${userId}`,
-                    type: `CONNECTION#${connectionId}#EDU#${index}`,
+                    id: pk,
+                    type: `EDU#${index}`,
                     degree: edu.degree,
                     school: edu.school,
                     year: edu.year ?? "",
@@ -223,14 +157,14 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
         );
     }
 
-    for (const contact of (connectionData.contacts ?? [])) {
-        const index = (connectionData.contacts ?? []).indexOf(contact);
+    // Contacts
+    for (const [index, contact] of (connectionData.contacts ?? []).entries()) {
         await ddb.send(
             new PutCommand({
                 TableName: TABLE_NAME,
                 Item: {
-                    id: `ROOT#${userId}`,
-                    type: `CONNECTION#${connectionId}#CONTACT#${index}`,
+                    id: pk,
+                    type: `CONTACT#${index}`,
                     contactType: contact.type,
                     value: contact.value,
                     userId,
@@ -244,7 +178,53 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
     return { ...item, connectionId };
 }
 
+// -------------------- GET CONNECTIONS --------------------
+export async function getConnectionsFromUser(userId: string) {
+    const result = await ddb.send(
+        new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "begins_with(id, :pk)",
+            ExpressionAttributeValues: {
+                ":pk": `ROOT#${userId}#CONNECTION#`,
+            },
+        })
+    );
+
+    const items = result.Items || [];
+    const connectionsMap: Record<string, any> = {};
+
+    for (const item of items) {
+        const connectionId = item.connectionId;
+        if (!connectionsMap[connectionId]) {
+            connectionsMap[connectionId] = {
+                connectionId,
+                firstName: item.firstName || "",
+                lastName: item.lastName || "",
+                skills: item.skills || [],
+                tags: item.tags || [],
+                notes: item.notes || "",
+                jobs: [],
+                education: [],
+                contacts: [],
+            };
+        }
+
+        if (item.type.startsWith("EXP#")) {
+            connectionsMap[connectionId].jobs.push(item);
+        } else if (item.type.startsWith("EDU#")) {
+            connectionsMap[connectionId].education.push(item);
+        } else if (item.type.startsWith("CONTACT#")) {
+            connectionsMap[connectionId].contacts.push(item);
+        }
+    }
+
+    return Object.values(connectionsMap);
+}
+
+// -------------------- UPDATE CONNECTION --------------------
 export async function updateConnection(userId: string, connectionId: string, updates: Record<string, any>) {
+    const pk = `ROOT#${userId}#CONNECTION#${connectionId}`;
+
     const updateExpressions: string[] = [];
     const expressionValues: Record<string, any> = {};
 
@@ -261,8 +241,8 @@ export async function updateConnection(userId: string, connectionId: string, upd
         new UpdateCommand({
             TableName: TABLE_NAME,
             Key: {
-                id: `ROOT#${userId}`,
-                type: `CONNECTION#${connectionId}`,
+                id: pk,
+                type: `PERSON#${connectionId}`,
             },
             UpdateExpression: "SET " + updateExpressions.join(", "),
             ExpressionAttributeValues: expressionValues,
@@ -273,17 +253,16 @@ export async function updateConnection(userId: string, connectionId: string, upd
     return result.Attributes;
 }
 
+// -------------------- DELETE CONNECTION --------------------
 export async function deleteConnection(userId: string, connectionId: string) {
+    const pk = `ROOT#${userId}#CONNECTION#${connectionId}`;
+
     const result = await ddb.send(
         new QueryCommand({
             TableName: TABLE_NAME,
-            KeyConditionExpression: "id = :id AND begins_with(#type, :type)",
-            ExpressionAttributeNames: {
-                "#type": "type"
-            },
+            KeyConditionExpression: "id = :id",
             ExpressionAttributeValues: {
-                ":id": `ROOT#${userId}`,
-                ":type": `CONNECTION#${connectionId}`,
+                ":id": pk,
             },
         })
     );
@@ -295,22 +274,13 @@ export async function deleteConnection(userId: string, connectionId: string) {
     }
 
     const deleteRequests = itemsToDelete.map(item => ({
-        DeleteRequest: {
-            Key: {
-                id: item.id,
-                type: item.type
-            }
-        }
+        DeleteRequest: { Key: { id: item.id, type: item.type } }
     }));
 
     for (let i = 0; i < deleteRequests.length; i += 25) {
         const batch = deleteRequests.slice(i, i + 25);
         await ddb.send(
-            new BatchWriteCommand({
-                RequestItems: {
-                    [TABLE_NAME]: batch
-                }
-            })
+            new BatchWriteCommand({ RequestItems: { [TABLE_NAME]: batch } })
         );
     }
 

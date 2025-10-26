@@ -45,6 +45,7 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
       ],
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       notes: notes || undefined,
+      isRootUser: false,
     };
 
     try {

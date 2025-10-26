@@ -59,41 +59,64 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { errorResponse, userId } = await getUserOrUnauthorized();
-  if (errorResponse) return errorResponse;
-
-  try {
-    const body = await req.json();
-
-    if (!body.firstName || !body.lastName) {
+    const { errorResponse, userId } = await getUserOrUnauthorized();
+    if (errorResponse) return errorResponse;
+  
+    try {
+      const body = await req.json();
+  
+      if (body.isRootUser) {
+        const user = await currentUser();
+        if (!user) {
+          return NextResponse.json({ error: "User session not initialized" }, { status: 401 });
+        }
+  
+        const userData = {
+          id: userId,
+          firstName: body.firstName ?? user.firstName ?? "",
+          lastName: body.lastName ?? user.lastName ?? "",
+          headshot: body.headshot ?? user.imageUrl ?? "",
+          skills: body.skills ?? [],
+          tags: body.tags ?? [],
+          notes: body.notes ?? "",
+          experience: body.experience ?? [],
+          education: body.education ?? [],
+          contacts: body.contacts ?? [],
+        };
+  
+        const savedUser = await putUser(userData);
+        return NextResponse.json({ message: "User saved", user: savedUser });
+      } else {
+        if (!body.firstName || !body.lastName) {
+          return NextResponse.json(
+            { error: "Missing required fields: firstName, lastName" },
+            { status: 400 }
+          );
+        }
+  
+        const connectionData = {
+          firstName: body.firstName,
+          lastName: body.lastName,
+          headshot: body.headshot ?? null,
+          skills: body.skills ?? [],
+          tags: body.tags ?? [],
+          notes: body.notes ?? "",
+          experience: body.experience ?? [],
+          education: body.education ?? [],
+          contacts: body.contacts ?? [],
+        };
+  
+        const savedConnection = await putConnection(userId, connectionData);
+        return NextResponse.json({ message: "Connection added", connection: savedConnection });
+      }
+    } catch (err: any) {
+      console.error("POST request error:", err);
       return NextResponse.json(
-        { error: "Missing required fields: firstName, lastName" },
-        { status: 400 }
+        { error: "Failed to save data", details: err.message },
+        { status: 500 }
       );
     }
-
-    const connectionData = {
-      firstName: body.firstName,
-      lastName: body.lastName,
-      headshot: body.headshot || null,
-      skills: body.skills || [],
-      tags: body.tags || [],
-      notes: body.notes || "",
-      experience: body.experience || [],
-      education: body.education || [],
-      contacts: body.contacts || [],
-    };
-
-    const connection = await putConnection(userId, connectionData);
-    return NextResponse.json({ message: "Connection added", connection });
-  } catch (err: any) {
-    console.error("POST connection error:", err);
-    return NextResponse.json(
-      { error: "Failed to add connection", details: err.message },
-      { status: 500 }
-    );
   }
-}
 
 export async function PATCH(req: Request) {
   const { errorResponse, userId } = await getUserOrUnauthorized();
