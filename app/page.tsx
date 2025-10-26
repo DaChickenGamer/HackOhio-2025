@@ -1,163 +1,122 @@
 "use client";
 
-import { useState } from 'react';
-import PersonNode from "./components/PersonNode";
-import { Person } from "@/types/person";
 import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
 
 export default function Home() {
-  const [isPersonVisible, setIsPersonVisible] = useState(true);
-
-  // Create a test person object
-  const testPerson: Person = {
-    firstName: "John",
-    lastName: "Doe",
-    id: "12345",
-    education: [
-      { 
-        degree: "B.S. Computer Science",
-        school: "Ohio State University",
-        year: "2022"
-      },
-      { 
-        degree: "M.S. Artificial Intelligence", 
-        school: "Stanford University",
-        year: "2024"
-      }
-    ],
-    experience: [
-      {
-        role: "Software Engineer",
-        company: "Tech Corp", 
-        duration: "2 years"
-      }
-    ],
-    skills: ["React", "TypeScript", "Node.js"],
-    contacts: [
-      { type: "Email", value: "john.doe@example.com" },
-      { type: "Phone", value: "555-1234" }
-    ],
-    tags: ["Developer", "Full-Stack"],
-    notes: "Great team player, lower headphones!"
-  };
-
-  const togglePersonVisibility = () => {
-    setIsPersonVisible(!isPersonVisible);
-  };
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <div className="mt-8">
-          {/* Toggle Button */}
-          <div className="mb-4 text-center">
-            <button
-              onClick={togglePersonVisibility}
-              className="inline-flex h-10 items-center justify-center rounded-full bg-blue-500 px-6 text-white hover:bg-blue-600 transition-colors"
-            >
-              {isPersonVisible ? "Hide Profile" : "Show Profile"}
-            </button>
-          </div>
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-200 dark:from-zinc-900 dark:to-black text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden">
+      {/* ====== Fade-in black overlay ====== */}
+      <motion.div
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 1.2, ease: "easeOut" }}
+        className="absolute inset-0 bg-black z-50 pointer-events-none"
+      />
 
-          {/* Display the PersonNode */}
-          {isPersonVisible && (
-            <PersonNode 
-              person={testPerson} 
-              onDelete={() => setIsPersonVisible(false)}
-            />
-          )}
+      <main className="flex flex-col items-center justify-center text-center px-8 py-16 max-w-3xl space-y-10 relative z-10">
+        {/* ====== Animated Company Name ====== */}
+        <motion.h1
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            duration: 1,
+            ease: "easeOut",
+            delay: 0.3,
+          }}
+          className="text-6xl sm:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent animate-gradient bg-[length:300%_300%] bg-gradient-to-r from-sky-400 via-blue-500 to-purple-600 drop-shadow-lg"
+        >
+          WebConnect
+        </motion.h1>
 
-          <Link
-            href="/graph"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-background mt-4"
+        {/* ====== Delayed Content ====== */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.3, duration: 0.8, ease: "easeOut" }}
+          className="flex flex-col items-center justify-center space-y-8"
+        >
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.6, duration: 0.6 }}
           >
-            See the graph →
-          </Link>
-        </div>
+            <Image
+              src="/clogo.png"
+              alt="WebConnect Logo"
+              width={300}
+              height={10}
+              className="dark:invert"
+            />
+          </motion.div>
+
+          {/* Tagline */}
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.8, duration: 0.7 }}
+            className="text-3xl font-semibold"
+          >
+            Visualize Connections Effortlessly
+          </motion.h2>
+
+          {/* Description */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 2.0, duration: 0.8 }}
+            className="text-lg text-zinc-600 dark:text-zinc-400 max-w-xl"
+          >
+            Explore relationships, structures, and data in an interactive and
+            intuitive way. WebConnect brings your ideas to life through dynamic
+            visual connections.
+          </motion.p>
+
+          {/* Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2.2, duration: 0.7 }}
+          >
+            <Link
+              href="/graph"
+              className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-900 px-8 text-white text-lg font-medium hover:bg-zinc-800 transition-colors dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-md"
+            >
+              See the Graph →
+            </Link>
+          </motion.div>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.footer
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2.6, duration: 1 }}
+          className="text-sm text-zinc-500 dark:text-zinc-500 mt-8"
+        >
+          © {new Date().getFullYear()} WebConnect. Built with Next.js & AWS DynamoDB.
+        </motion.footer>
       </main>
+
+      {/* ====== Keyframes for shifting gradient ====== */}
+      <style jsx global>{`
+        @keyframes gradientShift {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        .animate-gradient {
+          animation: gradientShift 6s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
-
-
-// "use client";
-
-// import { useEffect } from "react";
-// import { testPerson } from "@/data/TestUserCase";
-
-
-// import Link from "next/link";
-// import Image from "next/image";
-// import PersonNode from "./components/PersonNode";
-// import { Person } from "@/types/person";
-
-// export default function Home() {
-
-//   // Create a test person object
-//   const testPerson: Person = {
-//     firstName: "John",
-//     lastName: "Doe",
-//     id: "12345",
-//     education: [
-//       { 
-//         degree: "B.S. Computer Science",
-//         school: "Ohio State University",
-//         year: "2022"
-//       }, {
-//         degree: "M.S. Computer Science",
-//         school: "Ohio State University",
-//         year: "2024"
-//       }, {
-//         degree: "Ph.D. Computer Science",
-//         school: "Ohio State University",
-//         year: "2026"
-//       }
-//     ],
-//     experience: [
-//       {
-//         role: "Software Engineer",
-//         company: "Tech Corp",
-//         duration: "2 years"
-//       }, {
-//         role: "Senior Software Engineer",
-//         company: "Innovatech",
-//         duration: "3 years"
-//       }
-//     ],
-//     skills: ["React", "TypeScript", "Node.js"],
-//     contacts: [
-//       {
-//         type: "Email",
-//         value: "john.doe@example.com"
-//       },
-//       {
-//         type: "Phone",
-//         value: "555-1234"
-//       }
-//     ],
-//     tags: ["Developer", "Full-Stack"],
-//     notes: "Great team player, loves hackathons!"
-//   };
-
-//   return (
-//     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-//       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-//         {/* existing content ... */}
-
-//         <div className="mt-8">
-
-//           {/* Display the PersonNode */}
-//           <PersonNode person={testPerson} />
-
-//           <Link
-//             href="/graph"
-//             className="inline-flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-background"
-//           >
-
-//             See the graph →
-//           </Link>
-//         </div>
-//       </main>
-//     </div>
-//   );
-// }
