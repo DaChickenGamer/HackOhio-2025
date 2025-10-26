@@ -1,0 +1,19 @@
+{
+    "builds": [
+      {
+        "src": "package.json",
+        "use": "@vercel/node",
+        "config": {
+          "zeroConfig": true
+        }
+      }
+    ],
+    "env": {
+      "NODE_ENV": "production"
+    },
+    "buildCommand": "bun install && bun run build",
+    "devCommand": "bun run dev",
+    "installCommand": "bun install",
+    "framework": "nextjs"
+  }
+  
