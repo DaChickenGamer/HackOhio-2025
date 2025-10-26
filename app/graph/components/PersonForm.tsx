@@ -27,7 +27,6 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
   const [contacts, setContacts] = useState<Array<{ name: string; link: string }>>([]);
   const [contactName, setContactName] = useState("");
   const [contactLink, setContactLink] = useState("");
-  const [github, setGithub] = useState("");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
   const [connectToId, setConnectToId] = useState<string>("root");
@@ -41,7 +40,6 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
       contacts: [
         ...contacts.map((c) => ({ type: c.name, value: c.link })),
-        ...(github ? [{ type: "GitHub", value: github }] : []),
       ],
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       notes: notes || undefined,
@@ -105,7 +103,6 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
       setContacts([]);
       setContactName("");
       setContactLink("");
-      setGithub("");
       setTags("");
       setNotes("");
     } catch (error) {
@@ -332,24 +329,13 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
         )}
       </div>
 
-      {/* Skills, GitHub, Tags, Notes remain unchanged */}
+      {/* Skills, Tags, Notes remain unchanged */}
       <div className="col-span-2">
         <label className="text-xs" style={{ color: THEME.muted }}>Skills (comma-separated)</label>
         <input
           value={skills}
           onChange={(e) => setSkills(e.target.value)}
           placeholder="React, TypeScript"
-          className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
-          style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
-        />
-      </div>
-
-      <div className="col-span-2">
-        <label className="text-xs" style={{ color: THEME.muted }}>GitHub</label>
-        <input
-          value={github}
-          onChange={(e) => setGithub(e.target.value)}
-          placeholder="github.com/..."
           className="w-full rounded-lg border px-3 py-2 outline-none glow-focus"
           style={{ borderColor: THEME.border, background: THEME.surface, color: THEME.text }}
         />
