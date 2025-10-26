@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "next font build"
+    "lightning": "lightning build"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.34.0",
