@@ -1,9 +1,10 @@
-import { GetCommand, PutCommand, UpdateCommand, QueryCommand, BatchWriteCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, UpdateCommand, QueryCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb } from "./client";
 import { Person } from "@/types/person";
 import { v4 as uuidv4 } from "uuid";
 
 const TABLE_NAME = process.env.DYNAMO_TABLE!;
+const CONNECTIONS_GSI = "userId-index";
 
 // -------------------- USER --------------------
 export async function getUser(userId: string) {
@@ -99,7 +100,6 @@ export async function putUser(userData: Person) {
     await putNested(userData.experience ?? [], "EXP");
     await putNested(userData.education ?? [], "EDU");
     await putNested(userData.contacts ?? [], "CONTACT");
-    
 
     return userItem;
 }
@@ -108,7 +108,7 @@ export async function putUser(userData: Person) {
 export async function putConnection(userId: string, connectionData: Omit<Person, "id">) {
     const connectionId = uuidv4();
     const now = new Date().toISOString();
-    const pk = `ROOT#${userId}#CONNECTION#${connectionId}`;
+    const pk = `CONNECTION#${connectionId}`;
 
     // Root connection item
     const connectionItem = {
@@ -153,29 +153,48 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
     await putNested(connectionData.experience ?? [], "EXP");
     await putNested(connectionData.education ?? [], "EDU");
     await putNested(connectionData.contacts ?? [], "CONTACT");
-    
 
     return { ...connectionItem, connectionId };
 }
 
 // -------------------- GET CONNECTIONS --------------------
+/**
+ * Fetches all connections for a user using the GSI.
+ * This is highly efficient as it queries only the user's data partition.
+ * 
+ * Required GSI configuration:
+ * - Name: userId-index
+ * - Partition Key: userId (String)
+ * - Sort Key: type (String)
+ */
 export async function getConnectionsFromUser(userId: string) {
-    const result = await ddb.send(
-        new ScanCommand({
-          TableName: TABLE_NAME,
-          FilterExpression: "userId = :userId",
-          ExpressionAttributeValues: {
-            ":userId": userId,
-          },
-        })
-      );
+    let result;
+    try {
+        result = await ddb.send(
+            new QueryCommand({
+                TableName: TABLE_NAME,
+                IndexName: CONNECTIONS_GSI,
+                KeyConditionExpression: "userId = :userId",
+                FilterExpression: "begins_with(id, :connectionPrefix)",
+                ExpressionAttributeValues: {
+                    ":userId": userId,
+                    ":connectionPrefix": "CONNECTION#",
+                },
+            })
+        );
+    } catch (error: any) {
+        if (error.name === "ValidationException" && error.message?.includes("index")) {
+            console.error(`GSI '${CONNECTIONS_GSI}' may not exist. Please create it with: userId (partition key), type (sort key)`);
+        }
+        throw error;
+    }
 
     const items = result.Items ?? [];
     const connectionsMap: Record<string, any> = {};
 
     // First pass: collect PERSON# items to create connection entries
     for (const item of items) {
-        if (item.type && item.type.startsWith("PERSON#")) {
+        if (item.type.startsWith("PERSON#") && item.connectionId) {
             const connectionId = item.connectionId;
             if (!connectionsMap[connectionId]) {
                 connectionsMap[connectionId] = {
@@ -194,16 +213,16 @@ export async function getConnectionsFromUser(userId: string) {
         }
     }
 
-    // Second pass: collect nested items
+    // Second pass: collect nested items (EXP#, EDU#, CONTACT#)
     for (const item of items) {
         const connectionId = item.connectionId;
-        if (!connectionsMap[connectionId]) continue; // Skip if no main connection entry
+        if (!connectionsMap[connectionId]) continue;
 
-        if (item.type && item.type.startsWith("EXP#")) {
+        if (item.type.startsWith("EXP#")) {
             connectionsMap[connectionId].experience.push(item);
-        } else if (item.type && item.type.startsWith("EDU#")) {
+        } else if (item.type.startsWith("EDU#")) {
             connectionsMap[connectionId].education.push(item);
-        } else if (item.type && item.type.startsWith("CONTACT#")) {
+        } else if (item.type.startsWith("CONTACT#")) {
             connectionsMap[connectionId].contacts.push(item);
         }
     }
@@ -213,12 +232,11 @@ export async function getConnectionsFromUser(userId: string) {
 
 // -------------------- UPDATE CONNECTION --------------------
 export async function updateConnection(userId: string, connectionId: string, updates: Record<string, any>) {
-    const pk = `ROOT#${userId}#CONNECTION#${connectionId}`;
+    const pk = `CONNECTION#${connectionId}`;
     const now = new Date().toISOString();
 
     const updateExpressions: string[] = [];
     const expressionValues: Record<string, any> = {};
-
 
     Object.entries(updates).forEach(([key, value], idx) => {
         const placeholder = `:val${idx}`;
@@ -228,6 +246,9 @@ export async function updateConnection(userId: string, connectionId: string, upd
 
     updateExpressions.push("updatedAt = :updatedAt");
     expressionValues[":updatedAt"] = now;
+    
+    // Add userId for the condition expression
+    expressionValues[":userId"] = userId;
 
     const result = await ddb.send(
         new UpdateCommand({
@@ -237,6 +258,7 @@ export async function updateConnection(userId: string, connectionId: string, upd
                 type: `PERSON#${connectionId}`,
             },
             UpdateExpression: "SET " + updateExpressions.join(", "),
+            ConditionExpression: "userId = :userId",
             ExpressionAttributeValues: expressionValues,
             ReturnValues: "ALL_NEW",
         })
@@ -247,19 +269,18 @@ export async function updateConnection(userId: string, connectionId: string, upd
 
 // -------------------- DELETE CONNECTION --------------------
 export async function deleteConnection(userId: string, connectionId: string) {
-    const pk = `ROOT#${userId}#CONNECTION#${connectionId}`;
+    const pk = `CONNECTION#${connectionId}`;
 
+    // Query all items for this connection
     const result = await ddb.send(
         new QueryCommand({
-          TableName: TABLE_NAME,
-          KeyConditionExpression: "id = :id AND begins_with(#type, :prefix)",
-          ExpressionAttributeNames: { "#type": "type" },
-          ExpressionAttributeValues: {
-            ":id": `ROOT#${userId}#CONNECTION#${connectionId}`,
-            ":prefix": "EXP#", // or EDU#, CONTACT#
-          },
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "id = :pk",
+            ExpressionAttributeValues: {
+                ":pk": pk,
+            },
         })
-      );
+    );
 
     const itemsToDelete = result.Items ?? [];
 
@@ -267,15 +288,31 @@ export async function deleteConnection(userId: string, connectionId: string) {
         return { message: "Connection not found" };
     }
 
+    // Verify ownership - ensure all items belong to this user
+    const unauthorizedItems = itemsToDelete.filter(item => item.userId !== userId);
+    if (unauthorizedItems.length > 0) {
+        return { message: "Unauthorized: Connection does not belong to this user" };
+    }
+
+    // Prepare batch delete requests
     const deleteRequests = itemsToDelete.map(item => ({
-        DeleteRequest: { Key: { id: item.id, type: item.type } },
+        DeleteRequest: { 
+            Key: { 
+                id: item.id, 
+                type: item.type 
+            } 
+        },
     }));
 
-    // DynamoDB batch limit = 25
+    // DynamoDB batch limit = 25 items per batch
     for (let i = 0; i < deleteRequests.length; i += 25) {
         const batch = deleteRequests.slice(i, i + 25);
         await ddb.send(
-            new BatchWriteCommand({ RequestItems: { [TABLE_NAME]: batch } })
+            new BatchWriteCommand({ 
+                RequestItems: { 
+                    [TABLE_NAME]: batch 
+                } 
+            })
         );
     }
 

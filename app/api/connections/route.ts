@@ -22,8 +22,8 @@ export async function GET(req: Request) {
   if (errorResponse) return errorResponse;
 
   try {
-    // Get root user
     const rootUserItem = await getFullUser(userId);
+    const connections = await getConnectionsFromUser(userId);
     
     if (!rootUserItem || !rootUserItem.firstName) {
       const user = await currentUser();
@@ -47,16 +47,12 @@ export async function GET(req: Request) {
       };
 
       await putUser(rootUserData);
-      
-      // Return empty connections for now
       return NextResponse.json({ 
         root: rootUserData,
-        connections: []
+        connections: connections
       });
     }
 
-    const connections = await getConnectionsFromUser(userId);
-    
     // Transform rootUserItem to Person format
     const rootPerson = {
       id: userId,
