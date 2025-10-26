@@ -13,6 +13,7 @@ export interface Person {
   contacts?: Contact[];
   tags?: string[];
   notes?: string;
+  parentId?: string;
 
 }
 

@@ -68,9 +68,11 @@ export function useGraphData(isLoaded: boolean) {
             data: conn,
           });
 
+          // Use parentId if available, otherwise default to root
+          const parentId = conn.parentId || "root";
           loadedEdges.push({
-            id: `e-root-${nodeId}`,
-            source: "root",
+            id: `e-${parentId}-${nodeId}`,
+            source: parentId,
             target: nodeId,
             type: "straight",
             animated: false,

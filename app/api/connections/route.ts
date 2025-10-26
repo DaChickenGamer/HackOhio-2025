@@ -65,6 +65,7 @@ export async function GET(req: Request) {
       experience: rootUserItem.experience || [],
       education: rootUserItem.education || [],
       contacts: rootUserItem.contacts || [],
+      parentId: undefined,
     };
 
     return NextResponse.json({ 
@@ -126,6 +127,7 @@ export async function POST(req: Request) {
           experience: body.experience ?? [],
           education: body.education ?? [],
           contacts: body.contacts ?? [],
+          parentId: body.parentId || "root",
         };
   
         const savedConnection = await putConnection(userId, connectionData);

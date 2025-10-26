@@ -118,6 +118,7 @@ export async function putConnection(userId: string, connectionData: Omit<Person,
       type: `PERSON#${connectionId}`,
       userId,
       connectionId,
+      parentId: connectionData.parentId || "root",
       firstName: connectionData.firstName,
       lastName: connectionData.lastName,
       picture: connectionData.headshot ?? null,
@@ -183,6 +184,7 @@ export async function getConnectionsFromUser(userId: string) {
     if (!connectionsMap[connectionId]) {
       connectionsMap[connectionId] = {
         id: connectionId,
+        parentId: item.parentId || "root",
         firstName: "",
         lastName: "",
         headshot: "",

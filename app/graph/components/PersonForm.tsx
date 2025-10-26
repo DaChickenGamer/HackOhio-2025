@@ -44,6 +44,7 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       notes: notes || undefined,
       isRootUser: false,
+      parentId: connectToId,
     };
 
     try {
@@ -77,6 +78,7 @@ export function PersonForm({ nodes, setNodes, setEdges }: PersonFormProps) {
           contacts: connectionData.contacts,
           tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
           notes: notes || undefined,
+          parentId: connectToId,
         },
       };
 

@@ -15,6 +15,7 @@ export type PersonData = {
   notes?: string;
   label?: string;
   headshot?: string;
+  parentId?: string;
 };
 
 export type PersonNode = Node<PersonData, "person">;
