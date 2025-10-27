@@ -48,9 +48,9 @@ function RootLayoutContent({ children }: { children: ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <header className="flex justify-between items-center px-4 py-3 sm:p-6 shadow-md bg-white relative z-50">
+  <header className="flex justify-between items-center px-4 py-3 sm:p-6 shadow-md bg-background text-foreground relative z-50">
           <Link href="/" className="text-lg sm:text-xl font-semibold hover:text-purple-600 transition-colors">
             WebConnect
           </Link>
@@ -74,13 +74,13 @@ function RootLayoutContent({ children }: { children: ReactNode }) {
             <SignedIn>
               <Link 
                 href="/graph" 
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-purple-600 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-foreground opacity-80 hover:opacity-100 hover:text-purple-600 transition-colors"
               >
                 Graph
               </Link>
               <Link 
                 href="/settings" 
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-purple-600 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-foreground opacity-80 hover:opacity-100 hover:text-purple-600 transition-colors"
               >
                 Settings
               </Link>
@@ -99,17 +99,17 @@ function RootLayoutContent({ children }: { children: ReactNode }) {
               aria-label="Toggle menu"
             >
               <span
-                className={`block w-full h-0.5 bg-gray-700 transition-all duration-300 ${
+                className={`block w-full h-0.5 bg-foreground transition-all duration-300 ${
                   mobileMenuOpen ? 'rotate-45 translate-y-2' : ''
                 }`}
               ></span>
               <span
-                className={`block w-full h-0.5 bg-gray-700 transition-all duration-300 ${
+                className={`block w-full h-0.5 bg-foreground transition-all duration-300 ${
                   mobileMenuOpen ? 'opacity-0' : ''
                 }`}
               ></span>
               <span
-                className={`block w-full h-0.5 bg-gray-700 transition-all duration-300 ${
+                className={`block w-full h-0.5 bg-foreground transition-all duration-300 ${
                   mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''
                 }`}
               ></span>
@@ -118,11 +118,11 @@ function RootLayoutContent({ children }: { children: ReactNode }) {
 
           {/* Mobile Dropdown Menu */}
           {mobileMenuOpen && (
-            <div className="sm:hidden absolute top-full left-0 right-0 bg-white shadow-lg border-t border-gray-200">
+            <div className="sm:hidden absolute top-full left-0 right-0 bg-background text-foreground shadow-lg">
               <div className="flex flex-col p-4 space-y-3">
                 <SignedOut>
                   <SignInButton>
-                    <button className="w-full px-4 py-3 text-left bg-white border border-gray-300 hover:bg-gray-100 rounded-lg font-medium text-sm transition-colors">
+                    <button className="w-full px-4 py-3 text-left bg-background border border-[rgba(127,127,127,0.35)] hover:bg-[rgba(127,127,127,0.08)] rounded-lg font-medium text-sm transition-colors">
                       Sign In
                     </button>
                   </SignInButton>
@@ -138,14 +138,14 @@ function RootLayoutContent({ children }: { children: ReactNode }) {
                   <Link 
                     href="/graph" 
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-100 rounded-lg font-medium text-sm transition-colors"
+                    className="w-full px-4 py-3 text-left rounded-lg font-medium text-sm transition-colors hover:bg-[rgba(127,127,127,0.12)]"
                   >
                     Graph
                   </Link>
                   <Link 
                     href="/settings" 
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-100 rounded-lg font-medium text-sm transition-colors"
+                    className="w-full px-4 py-3 text-left rounded-lg font-medium text-sm transition-colors hover:bg-[rgba(127,127,127,0.12)]"
                   >
                     Settings
                   </Link>

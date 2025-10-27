@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { PersonNode } from "../types";
 import type { Edge } from "@xyflow/react";
 import { THEME } from "../utils/theme";
@@ -15,6 +15,7 @@ interface PersonFormProps {
 
 export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: PersonFormProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [atTop, setAtTop] = useState(true);
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [educations, setEducations] = useState<Array<{ degree: string; school: string; year: string }>>([]);
@@ -122,23 +123,28 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
         }
     };
 
+    // Adjust sidebar/toggle offset: when page is scrolled, use top-0; when at top, leave room for header
+    useEffect(() => {
+        const onScroll = () => setAtTop(typeof window !== 'undefined' ? window.scrollY < 4 : true);
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+
     return (
         <>
-            {/* Toggle Button - visible on all screen sizes */}
+            {/* Toggle Buttons: separate for mobile and desktop so placement can adapt */}
+            {/* Mobile: sits near left when closed, moves to screen right when open */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="fixed top-4 left-4 z-50 p-3 rounded-full shadow-lg transition-all border backdrop-blur"
-                style={{ background: THEME.primary, color: "#001018", borderColor: THEME.border }}
+                className={`md:hidden fixed ${atTop ? 'top-20' : 'top-4'} z-50 p-3 rounded-full shadow-lg transition-all border backdrop-blur ${
+                    isOpen ? 'right-4 left-auto' : 'left-4'
+                }`}
+                style={{ background: THEME.primary, color: '#001018', borderColor: THEME.border }}
                 aria-label="Toggle sidebar"
-                title={isOpen ? "Hide menu" : "Show menu"}
+                title={isOpen ? 'Hide menu' : 'Show menu'}
             >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-7 w-7"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     {isOpen ? (
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     ) : (
@@ -147,11 +153,30 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
                 </svg>
             </button>
 
-            {/* Sidebar - collapsible on all screen sizes */}
+            {/* Desktop: sits just to the right of the sidebar when open, near left edge when closed */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`hidden md:block fixed ${atTop ? 'top-20' : 'top-4'} z-50 p-3 rounded-full shadow-lg transition-all border backdrop-blur ${
+                    isOpen ? 'left-96' : 'left-4'
+                }`}
+                style={{ background: THEME.primary, color: '#001018', borderColor: THEME.border }}
+                aria-label="Toggle sidebar"
+                title={isOpen ? 'Hide menu' : 'Show menu'}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {isOpen ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    )}
+                </svg>
+            </button>
+
+            {/* Sidebar - collapsible on all screen sizes and positioned below header */}
             <aside
                 className={`
-                    fixed inset-0 w-full
-                    md:inset-y-0 md:left-0 md:right-auto md:w-[360px]
+                    fixed left-0 right-0 bottom-0 ${atTop ? 'top-16 sm:top-20' : 'top-0'} w-full
+                    md:left-0 md:right-auto md:w-[360px]
                     shrink-0 border-r p-4 h-full flex flex-col gap-3 overflow-y-auto
                     transition-transform duration-300 ease-in-out
                     z-40 custom-scrollbar
@@ -159,20 +184,7 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
                 `}
                 style={{ background: THEME.panel, color: THEME.text, borderColor: THEME.border }}
             >
-            <div className="flex items-center justify-between mb-1">
-                <h1 className="text-2xl font-bold">Add Person</h1>
-                <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-2 rounded-full hover:opacity-90 transition-opacity border"
-                    style={{ background: THEME.surface, color: THEME.text, borderColor: THEME.border }}
-                    aria-label="Close sidebar"
-                    title="Close"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+            <h1 className="text-2xl font-bold mb-1">Add Person</h1>
 
             <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -420,21 +432,27 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
                 />
             </div>
 
-            <button
-                className="mt-2 w-full rounded-xl px-3 py-2 font-semibold transition-colors"
-                onClick={onAddNode}
-                style={{ background: THEME.primary, color: "#001018", border: `1px solid ${THEME.border}` }}
-                onMouseOver={(e) => {
-                    e.currentTarget.style.background = THEME.primary700;
-                    e.currentTarget.style.color = THEME.text;
-                }}
-                onMouseOut={(e) => {
-                    e.currentTarget.style.background = THEME.primary;
-                    e.currentTarget.style.color = "#001018";
-                }}
+            {/* Sticky footer action so the primary button is always available */}
+            <div
+                className="sticky bottom-0 -mx-4 px-4 pt-2 pb-3"
+                style={{ background: THEME.panel, borderTop: `1px solid ${THEME.border}` }}
             >
-                Add Person & Connect
-            </button>
+                <button
+                    className="w-full rounded-xl px-3 py-2 font-semibold transition-colors"
+                    onClick={onAddNode}
+                    style={{ background: THEME.primary, color: "#001018", border: `1px solid ${THEME.border}` }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.background = THEME.primary700;
+                        e.currentTarget.style.color = THEME.text;
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.background = THEME.primary;
+                        e.currentTarget.style.color = "#001018";
+                    }}
+                >
+                    Add Connection
+                </button>
+            </div>
 
                         <style jsx>{`
         .glow-focus {
