@@ -1,4 +1,4 @@
-import { GetCommand, PutCommand, UpdateCommand, QueryCommand, BatchWriteCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, UpdateCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb } from "./client";
 import { Person } from "@/types/person";
 import { v4 as uuidv4 } from "uuid";
@@ -61,14 +61,22 @@ const userData: FullUserData = {
       userData.tags = item.tags;
       userData.notes = item.notes;
     } else if (item.type.startsWith("EXP#")) {
-      const { id, type, userId: _, updatedAt, ...cleanItem } = item;
-      userData.experience.push(cleanItem as Experience);
+      userData.experience.push({
+        role: item.role,
+        company: item.company,
+        duration: item.duration,
+      } as Experience);
     } else if (item.type.startsWith("EDU#")) {
-      const { id, type, userId: _, updatedAt, ...cleanItem } = item;
-      userData.education.push(cleanItem as Education);
+      userData.education.push({
+        degree: item.degree,
+        school: item.school,
+        year: item.year,
+      } as Education);
     } else if (item.type.startsWith("CONTACT#")) {
-      const { id, type, userId: _, updatedAt, ...cleanItem } = item;
-      userData.contacts.push(cleanItem as Contact);
+        userData.contacts.push({
+          type: item.contactType ?? item.typeLabel ?? item.contact_type ?? item.type, // be forgiving
+        value: item.value,
+      } as Contact);
     }
   }
 
@@ -99,16 +107,21 @@ export async function putUser(userData: Person) {
   const putNested = async (items: NestedItem[], prefix: string) => {
     for (const item of items ?? []) {
       const nestedId = uuidv4();
+      const base: Record<string, unknown> = {
+        id: `ROOT#${userData.id}`,
+        type: `${prefix}#${nestedId}`,
+        userId: userData.id,
+        updatedAt: now,
+      };
+      const payload =
+        prefix === "CONTACT"
+          ? { ...base, contactType: (item as Contact).type, value: (item as Contact).value }
+          : { ...base, ...item };
+
       await ddb.send(
         new PutCommand({
           TableName: TABLE_NAME,
-          Item: {
-            id: `ROOT#${userData.id}`,
-            type: `${prefix}#${nestedId}`,
-            ...item,
-            userId: userData.id,
-            updatedAt: now,
-          },
+          Item: payload,
         })
       );
     }
@@ -232,20 +245,28 @@ export async function getConnectionsFromUser(userId: string) {
       entry.tags = item.tags ?? [];
       entry.notes = item.notes ?? "";
     } else if (item.type.startsWith("EXP#")) {
-      const { id, type, userId: _, connectionId: __, updatedAt, ...cleanItem } = item;
-      entry.experience.push(cleanItem as Experience);
+      entry.experience.push({
+        role: item.role,
+        company: item.company,
+        duration: item.duration,
+      } as Experience);
     } else if (item.type.startsWith("EDU#")) {
-      const { id, type, userId: _, connectionId: __, updatedAt, ...cleanItem } = item;
-      entry.education.push(cleanItem as Education);
+      entry.education.push({
+        degree: item.degree,
+        school: item.school,
+        year: item.year,
+      } as Education);
     } else if (item.type.startsWith("CONTACT#")) {
-      const { id, type, userId: _, connectionId: __, updatedAt, ...cleanItem } = item;
-      entry.contacts.push(cleanItem as Contact);
+      entry.contacts.push({
+        type: item.typeLabel ?? item.contactType ?? item.contact_type ?? item.typeValue ?? item.method ?? item.type, // be forgiving
+        value: item.value,
+      } as Contact);
     }
   }
 
   return Object.values(connectionsMap);
 }
-type ConnectionUpdateFields = Partial<Omit<FullConnection, "id" | "connectionId" | "experience" | "education" | "contacts">>;
+// removed unused type
 
 // -------------------- UPDATE CONNECTION --------------------
 type DynamoValue = string | number | boolean | Array<string | number | boolean>;
@@ -253,7 +274,7 @@ type DynamoValue = string | number | boolean | Array<string | number | boolean>;
 export async function updateConnection(
   userId: string,
   connectionId: string,
-  updates: Partial<Omit<FullConnection, "id" | "connectionId" | "experience" | "education" | "contacts">>
+  updates: Partial<Omit<FullConnection, "id" | "connectionId">>
 ) {
   const pk = `CONNECTION#${connectionId}`;
   const now = new Date().toISOString();
@@ -261,7 +282,13 @@ export async function updateConnection(
   const updateExpressions: string[] = [];
   const expressionValues: Record<string, DynamoValue> = {};
 
-  Object.entries(updates).forEach(([key, value], idx) => {
+   // Filter out fields that cannot be updated (key attributes and computed fields)
+   const allowedFields = ['firstName', 'lastName', 'headshot', 'skills', 'tags', 'notes', 'parentId'];
+   const filteredUpdates = Object.fromEntries(
+     Object.entries(updates).filter(([key]) => allowedFields.includes(key))
+   );
+
+   Object.entries(filteredUpdates).forEach(([key, value], idx) => {
     if (value !== undefined) {
       const placeholder = `:val${idx}`;
       updateExpressions.push(`${key} = ${placeholder}`);
@@ -273,16 +300,162 @@ export async function updateConnection(
   expressionValues[":updatedAt"] = now;
   expressionValues[":userId"] = userId;
 
+  console.log("Updating connection with id:", pk);
+  console.log("Update expressions:", updateExpressions);
+  console.log("Expression values:", expressionValues);
+
   const result = await ddb.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
-      Key: { id: pk, type: `PERSON#${connectionId}` },
+      Key: { id: pk },
       UpdateExpression: "SET " + updateExpressions.join(", "),
       ConditionExpression: "userId = :userId",
       ExpressionAttributeValues: expressionValues,
       ReturnValues: "ALL_NEW",
     })
   );
+
+  console.log("Update successful:", result.Attributes);
+
+  // Replace experiences if provided
+  if (Array.isArray(updates.experience)) {
+    const expPrefix = "EXP#";
+    const parentId = (result.Attributes?.parentId as string) || "root";
+
+    // 1) Find existing EXP items for this connection
+    const existingExp = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: CONNECTIONS_GSI,
+        KeyConditionExpression: "userId = :userId AND begins_with(#sk, :prefix)",
+        FilterExpression: "connectionId = :connectionId",
+        ExpressionAttributeNames: { "#sk": "type" },
+        ExpressionAttributeValues: {
+          ":userId": userId,
+          ":connectionId": connectionId,
+          ":prefix": expPrefix,
+        },
+      })
+    );
+
+    // 2) Delete old EXP items
+    for (const it of existingExp.Items ?? []) {
+      await ddb.send(
+        new DeleteCommand({ TableName: TABLE_NAME, Key: { id: it.id } })
+      );
+    }
+
+    // 3) Insert new EXP items
+    const now = new Date().toISOString();
+  for (const exp of (updates.experience as Experience[])) {
+      const nestedId = uuidv4();
+      await ddb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            id: `${"EXP"}#${nestedId}`,
+            type: `${"EXP"}#${nestedId}`,
+            connectionId,
+            userId,
+            parentId,
+            updatedAt: now,
+            ...exp,
+          },
+        })
+      );
+    }
+  }
+
+  // Replace education if provided
+  if (Array.isArray(updates.education)) {
+    const eduPrefix = "EDU#";
+    const parentId = (result.Attributes?.parentId as string) || "root";
+
+    const existingEdu = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: CONNECTIONS_GSI,
+        KeyConditionExpression: "userId = :userId AND begins_with(#sk, :prefix)",
+        FilterExpression: "connectionId = :connectionId",
+        ExpressionAttributeNames: { "#sk": "type" },
+        ExpressionAttributeValues: {
+          ":userId": userId,
+          ":connectionId": connectionId,
+          ":prefix": eduPrefix,
+        },
+      })
+    );
+
+    for (const it of existingEdu.Items ?? []) {
+      await ddb.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { id: it.id } }));
+    }
+
+    const now2 = new Date().toISOString();
+    for (const edu of updates.education) {
+      const nestedId = uuidv4();
+      await ddb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            id: `${"EDU"}#${nestedId}`,
+            type: `${"EDU"}#${nestedId}`,
+            connectionId,
+            userId,
+            parentId,
+            updatedAt: now2,
+            degree: edu.degree,
+            school: edu.school,
+            year: edu.year,
+          },
+        })
+      );
+    }
+  }
+
+  // Replace contacts if provided
+  if (Array.isArray(updates.contacts)) {
+    const conPrefix = "CONTACT#";
+    const parentId = (result.Attributes?.parentId as string) || "root";
+
+    const existingContacts = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: CONNECTIONS_GSI,
+        KeyConditionExpression: "userId = :userId AND begins_with(#sk, :prefix)",
+        FilterExpression: "connectionId = :connectionId",
+        ExpressionAttributeNames: { "#sk": "type" },
+        ExpressionAttributeValues: {
+          ":userId": userId,
+          ":connectionId": connectionId,
+          ":prefix": conPrefix,
+        },
+      })
+    );
+
+    for (const it of existingContacts.Items ?? []) {
+      await ddb.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { id: it.id } }));
+    }
+
+    const now3 = new Date().toISOString();
+    for (const c of updates.contacts) {
+      const nestedId = uuidv4();
+      await ddb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            id: `${"CONTACT"}#${nestedId}`,
+            type: `${"CONTACT"}#${nestedId}`,
+            connectionId,
+            userId,
+            parentId,
+            updatedAt: now3,
+            contactType: c.type,
+            value: c.value,
+          },
+        })
+      );
+    }
+  }
 
   return result.Attributes;
 }

@@ -373,10 +373,24 @@ export function PersonCircleNode(
       return;
     }
     try {
+       // Only send fields that should be updated (exclude id, connectionId, distance, maxDistance, and nested arrays)
+       const updates = {
+         firstName: updated.firstName,
+         lastName: updated.lastName,
+         headshot: updated.headshot,
+         skills: updated.skills,
+         tags: updated.tags,
+         notes: updated.notes,
+         // include arrays so DB can replace nested items
+         experience: updated.experience,
+         education: updated.education,
+         contacts: updated.contacts,
+       };
+     
       const res = await fetch("/api/connections", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: id, updates: updated }),
+         body: JSON.stringify({ connectionId: id, updates }),
       });
       const data = await res.json();
       console.log("Update response:", data);
