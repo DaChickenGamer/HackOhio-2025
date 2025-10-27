@@ -1,459 +1,479 @@
 "use client";
 
-import { useState } from 'react';
-import { Person } from "@/types/person";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useUser } from "@clerk/nextjs";
+import { THEME } from "../graph/utils/theme";
+import { fullName, initials } from "../graph/utils/graphHelpers";
+import type { Person as PersonModel } from "@/types/person";
+import type { Contact } from "@/types/contact";
+import type { Education } from "@/types/education";
+import type { Experience } from "@/types/experience";
+import type { PersonNode as RFPersonNode } from "../graph/types";
 
-// Props interface
-interface PersonNodeProps {
-  person: Person;
-  onDelete?: () => void;
-  onClose?: () => void;
-}
-
-// PersonNode component
-export default function PersonNode({ person, onDelete, onClose }: PersonNodeProps) {
+// OG overlay design component (square, centered)
+export default function PersonNodeOverlay({
+  person,
+  isOpen,
+  onClose,
+  onConfirmDelete,
+  onConfirmEdit,
+  isGuest = false,
+}: {
+  person: PersonModel;
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirmDelete: () => Promise<void> | void;
+  onConfirmEdit: (updated: PersonModel) => Promise<void> | void;
+  isGuest?: boolean;
+}) {
   const [expPage, setExpPage] = useState(0);
   const [eduPage, setEduPage] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [form, setForm] = useState<PersonModel>(person);
 
-  const expPages = person.experience || [];
-  const eduPages = person.education || [];
-
+  const expPages: Experience[] = form.experience || [];
+  const eduPages: Education[] = form.education || [];
   const maxExpPages = Math.max(expPages.length, 1);
   const maxEduPages = Math.max(eduPages.length, 1);
 
-  const currentExp = expPages[expPage];
-  const currentEdu = eduPages[eduPage];
+  const update = <K extends keyof PersonModel>(key: K, value: PersonModel[K]) =>
+    setForm((f: PersonModel) => ({ ...f, [key]: value }));
 
-  const nextExp = () => setExpPage((prev: number) => (prev + 1) % maxExpPages);
-  const prevExp = () => setExpPage((prev: number) => (prev - 1 + maxExpPages) % maxExpPages);
-  
-  const nextEdu = () => setEduPage((prev: number) => (prev + 1) % maxEduPages);
-  const prevEdu = () => setEduPage((prev: number) => (prev - 1 + maxEduPages) % maxEduPages);
-
-  const handleDelete = () => {
-    setIsVisible(false);
-    if (onDelete) {
-      onDelete();
+  const confirmEdit = () => {
+    if (isGuest) {
+      alert("Sign in to edit.");
+      return;
     }
+    setShowEditConfirm(false);
+    setIsEditing(true);
   };
 
-  const handleClose = () => {
-    setIsVisible(false);
-    if (onClose) {
-      onClose();
+  const handleSave = async () => {
+    if (isGuest) {
+      alert("Sign in to save.");
+      return;
     }
+    await onConfirmEdit(form);
+    setIsEditing(false);
   };
 
-  // If not visible, return null to remove from DOM
-  if (!isVisible) {
-    return null;
-  }
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  return (
-    <div className="person-node relative max-w-md w-full bg-white rounded-2xl shadow-2xl p-6 border border-gray-200 aspect-square min-h-0 mx-auto">
-      {/* Delete Button - Top Right Corner (Black) */}
-      <button
-        onClick={handleDelete}
-        className="absolute -top-2 -right-2 w-8 h-8 bg-black text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-800 transition-colors z-10"
-        title="Delete"
+  // Close on Escape and trap focus within the modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && containerRef.current) {
+        const focusable = Array.from(
+          containerRef.current.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute("disabled") && !el.getAttribute("aria-hidden"));
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        const isShift = e.shiftKey;
+        if (!active || !containerRef.current.contains(active)) {
+          e.preventDefault();
+          (isShift ? last : first).focus();
+        } else if (!isShift && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (isShift && active === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, isOpen]);
+
+  // Prevent background scroll while modal is open and move initial focus into modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    // Focus the modal container next tick
+    const id = window.requestAnimationFrame(() => {
+      containerRef.current?.focus();
+    });
+    return () => {
+      document.body.style.overflow = original;
+      window.cancelAnimationFrame(id);
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const modal = (
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ background: "rgba(0,0,0,0.6)", zIndex: 9999 }}
+      onClick={onClose}
+      aria-hidden={false}
+    >
+      <div
+        ref={containerRef}
+        className="relative rounded-2xl shadow-2xl flex flex-col outline-none"
+        style={{
+          background: THEME.panel,
+          border: `2px solid ${THEME.border}`,
+          color: THEME.text,
+          width: "min(90vmin, 900px)",
+          height: "min(90vmin, 900px)",
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="person-overlay-title"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
       >
-        ×
-      </button>
-
-      {/* Close Button - Top Left Corner (Gray) */}
-      <button
-        onClick={handleClose}
-        className="absolute -top-2 -left-2 w-8 h-8 bg-gray-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-600 transition-colors z-10"
-        title="Close"
-      >
-        −
-      </button>
-
-      {/* Name Header */}
-      <div className="node-header text-center mb-6">
-        <h2 className="text-xl font-bold">
-          {person.firstName || person.lastName ? (
-            `${person.firstName || ''} ${person.lastName || ''}`.trim()
-          ) : (
-            "Unnamed Person"
-          )}
-        </h2>
-      </div>
-
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-2 gap-6 h-[calc(100%-3rem)]">
-        {/* Left Column - Experience Book */}
-        <div className="space-y-4">
-          <div className="node-experience">
-            <div className="flex items-center justify-between mb-1">
-              <strong className="block text-sm">Experience</strong>
-              {expPages.length > 1 && (
-                <div className="flex items-center gap-1 text-xs">
-                  {expPage > 0 && (
-                    <button 
-                      onClick={prevExp}
-                      className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-                    >
-                      ←
-                    </button>
-                  )}
-                  <span>{expPage + 1}/{maxExpPages}</span>
-                  {expPage < maxExpPages - 1 && (
-                    <button 
-                      onClick={nextExp}
-                      className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-                    >
-                      →
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {currentExp ? (
-              <div className="text-xs border rounded-lg p-3 bg-gray-50 min-h-[80px]">
-                <p className="font-medium mb-1">{currentExp.role}</p>
-                <p className="text-gray-600 mb-1">{currentExp.company}</p>
-                {currentExp.duration && (
-                  <p className="text-gray-500 text-xs">{currentExp.duration}</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 italic text-xs">None</p>
-            )}
+        {/* Header */}
+          <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: THEME.border }}>
+          <div id="person-overlay-title" className="text-2xl font-bold truncate">
+            {form.firstName || form.lastName ? `${form.firstName ?? ""} ${form.lastName ?? ""}`.trim() : "Unnamed"}
           </div>
-
-          {/* Education Book */}
-          <div className="node-education">
-            <div className="flex items-center justify-between mb-1">
-              <strong className="block text-sm">Education</strong>
-              {eduPages.length > 1 && (
-                <div className="flex items-center gap-1 text-xs">
-                  {eduPage > 0 && (
-                    <button 
-                      onClick={prevEdu}
-                      className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-                    >
-                      ←
-                    </button>
-                  )}
-                  <span>{eduPage + 1}/{maxEduPages}</span>
-                  {eduPage < maxEduPages - 1 && (
-                    <button 
-                      onClick={nextEdu}
-                      className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-                    >
-                      →
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {currentEdu ? (
-              <div className="text-xs border rounded-lg p-3 bg-gray-50 min-h-[80px]">
-                <p className="font-medium mb-1">{currentEdu.degree}</p>
-                <p className="text-gray-600 mb-1">{currentEdu.school}</p>
-                <p className="text-gray-500">{currentEdu.year}</p>
-              </div>
+          <div className="flex gap-2">
+            {!isEditing ? (
+              <>
+                <button
+                  onClick={() => (isGuest ? alert("Sign in to edit.") : setShowEditConfirm(true))}
+                  className="px-4 py-2 rounded-md"
+                  style={{ background: THEME.primary, color: THEME.bg }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => (isGuest ? alert("Sign in to delete.") : setShowDeleteConfirm(true))}
+                  className="px-4 py-2 rounded-md"
+                  style={{ background: "#ef4444", color: "#fff" }}
+                >
+                  Delete
+                </button>
+                <button onClick={onClose} className="px-4 py-2 rounded-md" style={{ background: THEME.border }}>
+                  Close
+                </button>
+              </>
             ) : (
-              <p className="text-gray-500 italic text-xs">None</p>
+              <>
+                <button onClick={handleSave} className="px-4 py-2 rounded-md" style={{ background: "#10b981", color: "#fff" }}>
+                  Save
+                </button>
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-md" style={{ background: "#6b7280", color: "#fff" }}>
+                  Cancel
+                </button>
+              </>
             )}
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-4 overflow-y-auto">
-          {/* Skills */}
-          <div className="node-skills">
-            <strong className="block text-sm mb-1">Skills</strong>
-            {person.skills && person.skills.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {person.skills.slice(0, 6).map((skill, index) => (
-                  <span 
-                    key={index} 
-                    className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 italic text-xs">None</p>
-            )}
-          </div>
-
-          {/* Contact */}
-          <div className="node-contact">
-            <strong className="block text-sm mb-1">Contact</strong>
-            {person.contacts && person.contacts.length > 0 ? (
-              <div className="space-y-1 text-xs">
-                {person.contacts.slice(0, 3).map((contact, index) => (
-                  <div key={index}>
-                    <p><span className="font-medium">{contact.type}:</span> {contact.value}</p>
+  {/* Content grid (fills remaining space, scrolls) */}
+  <div className="flex-1 min-h-0 grid grid-cols-2 gap-6 p-6 overflow-auto">
+          {/* Left: Experience pager */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-lg font-semibold" style={{ color: THEME.muted }}>Experience</div>
+              {maxExpPages > 1 && (
+                <div className="flex gap-2">
+                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setExpPage((p) => (p - 1 + maxExpPages) % maxExpPages)}>
+                    Prev
+                  </button>
+                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setExpPage((p) => (p + 1) % maxExpPages)}>
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="p-4 rounded-lg" style={{ background: THEME.bg, border: `1px solid ${THEME.border}` }}>
+              {!isEditing ? (
+                expPages.length ? (
+                  <div>
+                    <div className="text-base font-medium">{expPages[expPage]?.role}</div>
+                    <div className="text-sm opacity-80">{expPages[expPage]?.company} {expPages[expPage]?.duration && `(${expPages[expPage]?.duration})`}</div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 italic text-xs">None</p>
-            )}
+                ) : (
+                  <div className="opacity-60">No experience</div>
+                )
+              ) : (
+                <div className="space-y-2">
+                  <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={expPages[expPage]?.role || ""} onChange={(e) => {
+                    const next = [...(form.experience || [])];
+                    next[expPage] = { ...(next[expPage] || { role: "", company: "", duration: "" }), role: e.target.value } as Experience;
+                    update("experience", next as PersonModel["experience"]);
+                  }} placeholder="Role" />
+                  <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={expPages[expPage]?.company || ""} onChange={(e) => {
+                    const next = [...(form.experience || [])];
+                    next[expPage] = { ...(next[expPage] || { role: "", company: "", duration: "" }), company: e.target.value } as Experience;
+                    update("experience", next as PersonModel["experience"]);
+                  }} placeholder="Company" />
+                  <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={expPages[expPage]?.duration || ""} onChange={(e) => {
+                    const next = [...(form.experience || [])];
+                    next[expPage] = { ...(next[expPage] || { role: "", company: "", duration: "" }), duration: e.target.value } as Experience;
+                    update("experience", next as PersonModel["experience"]);
+                  }} placeholder="Duration" />
+                </div>
+              )}
+            </div>
+
+            {/* Education pager */}
+            <div className="flex items-center justify-between">
+              <div className="text-lg font-semibold" style={{ color: THEME.muted }}>Education</div>
+              {maxEduPages > 1 && (
+                <div className="flex gap-2">
+                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setEduPage((p) => (p - 1 + maxEduPages) % maxEduPages)}>
+                    Prev
+                  </button>
+                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setEduPage((p) => (p + 1) % maxEduPages)}>
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="p-4 rounded-lg" style={{ background: THEME.bg, border: `1px solid ${THEME.border}` }}>
+              {!isEditing ? (
+                eduPages.length ? (
+                  <div>
+                    <div className="text-base font-medium">{eduPages[eduPage]?.degree}</div>
+                    <div className="text-sm opacity-80">{eduPages[eduPage]?.school} {eduPages[eduPage]?.year && `(${eduPages[eduPage]?.year})`}</div>
+                  </div>
+                ) : (
+                  <div className="opacity-60">No education</div>
+                )
+              ) : (
+                <div className="space-y-2">
+                  <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={eduPages[eduPage]?.degree || ""} onChange={(e) => {
+                    const next = [...(form.education || [])];
+                    next[eduPage] = { ...(next[eduPage] || { degree: "", school: "", year: "" }), degree: e.target.value } as Education;
+                    update("education", next as PersonModel["education"]);
+                  }} placeholder="Degree" />
+                  <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={eduPages[eduPage]?.school || ""} onChange={(e) => {
+                    const next = [...(form.education || [])];
+                    next[eduPage] = { ...(next[eduPage] || { degree: "", school: "", year: "" }), school: e.target.value } as Education;
+                    update("education", next as PersonModel["education"]);
+                  }} placeholder="School" />
+                  <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={eduPages[eduPage]?.year || ""} onChange={(e) => {
+                    const next = [...(form.education || [])];
+                    next[eduPage] = { ...(next[eduPage] || { degree: "", school: "", year: "" }), year: e.target.value } as Education;
+                    update("education", next as PersonModel["education"]);
+                  }} placeholder="Year" />
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Tags */}
-          <div className="node-tags">
-            <strong className="block text-sm mb-1">Tags</strong>
-            {person.tags && person.tags.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {person.tags.slice(0, 4).map((tag, index) => (
-                  <span 
-                    key={index} 
-                    className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 italic text-xs">None</p>
-            )}
+          {/* Right: Skills, Contacts, Notes */}
+          <div className="space-y-6">
+            <div>
+              <div className="text-lg font-semibold mb-2" style={{ color: THEME.muted }}>Skills</div>
+              {!isEditing ? (
+                <div className="text-base leading-relaxed">{(form.skills || []).join(", ") || "—"}</div>
+              ) : (
+                <textarea className="w-full px-3 py-2 rounded" rows={4} style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={(form.skills || []).join(", ")}
+                  onChange={(e) => update("skills", e.target.value.split(",").map((s) => s.trim()).filter(Boolean) as string[])}
+                />
+              )}
+            </div>
+
+            <div>
+              <div className="text-lg font-semibold mb-2" style={{ color: THEME.muted }}>Contacts</div>
+              {!isEditing ? (
+                <div className="space-y-1">
+                  {(form.contacts || []).map((c: Contact, i: number) => (
+                    <div key={i} className="text-base"><span className="font-medium">{c.type}:</span> {c.value}</div>
+                  ))}
+                  {!(form.contacts || []).length && <div className="opacity-60">—</div>}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {(form.contacts || []).map((c: Contact, i: number) => (
+                    <div key={i} className="grid grid-cols-2 gap-2">
+                      <input className="px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={c.type || ""} onChange={(e) => {
+                        const next = [...(form.contacts || [])];
+                        next[i] = { ...(next[i] || { type: "", value: "" }), type: e.target.value } as Contact;
+                        update("contacts", next as PersonModel["contacts"]);
+                      }} placeholder="Type" />
+                      <input className="px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={c.value || ""} onChange={(e) => {
+                        const next = [...(form.contacts || [])];
+                        next[i] = { ...(next[i] || { type: "", value: "" }), value: e.target.value } as Contact;
+                        update("contacts", next as PersonModel["contacts"]);
+                      }} placeholder="Value" />
+                    </div>
+                  ))}
+                  <button className="px-3 py-2 rounded" style={{ background: THEME.border }} onClick={() => update("contacts", ([ ...(form.contacts || []), { type: "", value: "" }] as Contact[]))}>
+                    + Add Contact
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="text-lg font-semibold mb-2" style={{ color: THEME.muted }}>Tags</div>
+              {!isEditing ? (
+                <div className="text-base">{(form.tags || []).join(", ") || "—"}</div>
+              ) : (
+                <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={(form.tags || []).join(", ")}
+                  onChange={(e) => update("tags", e.target.value.split(",").map((t) => t.trim()).filter(Boolean) as string[])}
+                />
+              )}
+            </div>
+
+            <div>
+              <div className="text-lg font-semibold mb-2" style={{ color: THEME.muted }}>Notes</div>
+              {!isEditing ? (
+                <div className="text-base leading-relaxed">{form.notes || "—"}</div>
+              ) : (
+                <textarea className="w-full px-3 py-2 rounded" rows={6} style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={form.notes || ""}
+                  onChange={(e) => update("notes", e.target.value as string)}
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Notes - Full width at bottom */}
-      <div className="node-notes mt-4 border-t pt-2">
-        <strong className="block text-sm mb-1">Notes</strong>
-        {person.notes ? (
-          <p className="text-gray-600 text-xs line-clamp-2">{person.notes}</p>
-        ) : (
-          <p className="text-gray-500 italic text-xs">None</p>
+        {/* Edit confirm */}
+        {showEditConfirm && (
+          <div className="fixed inset-0 z-10000 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.9)" }} onClick={() => setShowEditConfirm(false)}>
+            <div className="rounded-lg p-6" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} onClick={(e) => e.stopPropagation()}>
+              <div className="text-lg font-bold mb-4">Enter edit mode?</div>
+              <div className="flex justify-end gap-2">
+                <button className="px-4 py-2 rounded" style={{ background: THEME.border }} onClick={() => setShowEditConfirm(false)}>Cancel</button>
+                <button className="px-4 py-2 rounded" style={{ background: THEME.primary, color: THEME.bg }} onClick={confirmEdit}>Yes</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete confirm */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-10000 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.9)" }} onClick={() => setShowDeleteConfirm(false)}>
+            <div className="rounded-lg p-6" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} onClick={(e) => e.stopPropagation()}>
+              <div className="text-lg font-bold mb-4">Delete this person?</div>
+              <div className="flex justify-end gap-2">
+                <button className="px-4 py-2 rounded" style={{ background: THEME.border }} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+                <button className="px-4 py-2 rounded" style={{ background: "#ef4444", color: "#fff" }} onClick={async () => { await onConfirmDelete(); setShowDeleteConfirm(false); onClose(); }}>Delete</button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
+
+  if (typeof window === "undefined" || !document?.body) return null;
+  return createPortal(modal, document.body);
 }
 
+// React Flow node adapter that uses the OG overlay
+export function PersonCircleNode(props: NodeProps<RFPersonNode> & {
+  openNodeId?: string | null;
+  setOpenNodeId?: (id: string | null) => void;
+  onDelete?: (nodeId: string) => void;
+  onUpdate?: (nodeId: string, data: RFPersonNode["data"]) => void;
+}) {
+  const { data, id, openNodeId, setOpenNodeId, onDelete, onUpdate } = props as NodeProps<RFPersonNode> & {
+    openNodeId?: string | null;
+    setOpenNodeId?: (id: string | null) => void;
+    onDelete?: (nodeId: string) => void;
+    onUpdate?: (nodeId: string, data: RFPersonNode["data"]) => void;
+  };
 
+  const { user } = useUser();
+  const isGuest = !user;
 
+  const name = fullName(data);
+  const distance = data.distance ?? 0;
+  const maxDistance = data.maxDistance ?? 1;
+  const ratio = maxDistance > 0 ? Math.min(1, distance / maxDistance) : 0;
+  const hueA = Math.round(190 + 80 * ratio);
+  const hueB = Math.round(220 + 80 * ratio);
+  const colorA = `hsl(${hueA} 90% 55%)`;
+  const colorB = `hsl(${hueB} 70% 50%)`;
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenNodeId?.(id);
+  };
 
-// "use client";
+  return (
+    <div className="relative nodrag" style={{ pointerEvents: "all" }}>
+      <div
+        className="node-anim relative flex flex-col items-center justify-center w-24 h-24 rounded-full select-none transition-transform duration-300 will-change-transform overflow-hidden cursor-pointer"
+        style={{
+          background: `linear-gradient(145deg, ${colorA} 0%, ${colorB} 100%)`,
+          border: `2px solid ${THEME.border}`,
+          boxShadow: `0 8px 24px rgba(34, 211, 238, 0.12)`,
+          pointerEvents: "all",
+        }}
+        title={name}
+        onClick={handleClick}
+      >
+        <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold" style={{ background: "#ffffffCC", color: "#0b0f14" }}>
+          {initials(data)}
+        </div>
+        <Handle type="source" position={Position.Right} id="center-source" style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, opacity: 0 }} />
+        <Handle type="target" position={Position.Left} id="center-target" style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, opacity: 0 }} />
+      </div>
 
-// import { useState } from 'react';
-// import { Person } from "@/types/person";
-
-// // Props interface
-// interface PersonNodeProps {
-//   person: Person;
-//   onDelete?: () => void;
-// }
-
-// // PersonNode component
-// export default function PersonNode({ person, onDelete }: PersonNodeProps) {
-//   const [expPage, setExpPage] = useState(0);
-//   const [eduPage, setEduPage] = useState(0);
-//   const [isVisible, setIsVisible] = useState(true);
-
-//   const expPages = person.experience || [];
-//   const eduPages = person.education || [];
-
-//   const maxExpPages = Math.max(expPages.length, 1);
-//   const maxEduPages = Math.max(eduPages.length, 1);
-
-//   const currentExp = expPages[expPage];
-//   const currentEdu = eduPages[eduPage];
-
-//   const nextExp = () => setExpPage((prev: number) => (prev + 1) % maxExpPages);
-//   const prevExp = () => setExpPage((prev: number) => (prev - 1 + maxExpPages) % maxExpPages);
-  
-//   const nextEdu = () => setEduPage((prev: number) => (prev + 1) % maxEduPages);
-//   const prevEdu = () => setEduPage((prev: number) => (prev - 1 + maxEduPages) % maxEduPages);
-
-//   const handleDelete = () => {
-//     setIsVisible(false);
-//     if (onDelete) {
-//       onDelete();
-//     }
-//   };
-
-//   // If not visible, return null to remove from DOM
-//   if (!isVisible) {
-//     return null;
-//   }
-
-//   return (
-//     <div className="person-node relative max-w-md w-full bg-white rounded-2xl shadow-2xl p-6 border border-gray-200 aspect-square min-h-0 mx-auto">
-//       {/* Delete Button - Top Right Corner */}
-//       <button
-//         onClick={handleDelete}
-//         className="absolute -top-2 -right-2 w-8 h-8 bg-black text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-800 transition-colors z-10"
-//         title="Delete"
-//       >
-//         ×
-//       </button>
-
-//       {/* Name Header */}
-//       <div className="node-header text-center mb-6">
-//         <h2 className="text-xl font-bold">
-//           {person.firstName || person.lastName ? (
-//             `${person.firstName || ''} ${person.lastName || ''}`.trim()
-//           ) : (
-//             "Unnamed Person"
-//           )}
-//         </h2>
-//       </div>
-
-//       {/* Two Column Layout */}
-//       <div className="grid grid-cols-2 gap-6 h-[calc(100%-3rem)]">
-//         {/* Left Column - Experience Book */}
-//         <div className="space-y-4">
-//           <div className="node-experience">
-//             <div className="flex items-center justify-between mb-1">
-//               <strong className="block text-sm">Experience</strong>
-//               {expPages.length > 1 && (
-//                 <div className="flex items-center gap-1 text-xs">
-//                   {expPage > 0 && (
-//                     <button 
-//                       onClick={prevExp}
-//                       className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-//                     >
-//                       ←
-//                     </button>
-//                   )}
-//                   <span>{expPage + 1}/{maxExpPages}</span>
-//                   {expPage < maxExpPages - 1 && (
-//                     <button 
-//                       onClick={nextExp}
-//                       className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-//                     >
-//                       →
-//                     </button>
-//                   )}
-//                 </div>
-//               )}
-//             </div>
-            
-//             {currentExp ? (
-//               <div className="text-xs border rounded-lg p-3 bg-gray-50 min-h-[80px]">
-//                 <p className="font-medium mb-1">{currentExp.role}</p>
-//                 <p className="text-gray-600 mb-1">{currentExp.company}</p>
-//                 {currentExp.duration && (
-//                   <p className="text-gray-500 text-xs">{currentExp.duration}</p>
-//                 )}
-//               </div>
-//             ) : (
-//               <p className="text-gray-500 italic text-xs">None</p>
-//             )}
-//           </div>
-
-//           {/* Education Book */}
-//           <div className="node-education">
-//             <div className="flex items-center justify-between mb-1">
-//               <strong className="block text-sm">Education</strong>
-//               {eduPages.length > 1 && (
-//                 <div className="flex items-center gap-1 text-xs">
-//                   {eduPage > 0 && (
-//                     <button 
-//                       onClick={prevEdu}
-//                       className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-//                     >
-//                       ←
-//                     </button>
-//                   )}
-//                   <span>{eduPage + 1}/{maxEduPages}</span>
-//                   {eduPage < maxEduPages - 1 && (
-//                     <button 
-//                       onClick={nextEdu}
-//                       className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
-//                     >
-//                       →
-//                     </button>
-//                   )}
-//                 </div>
-//               )}
-//             </div>
-            
-//             {currentEdu ? (
-//               <div className="text-xs border rounded-lg p-3 bg-gray-50 min-h-[80px]">
-//                 <p className="font-medium mb-1">{currentEdu.degree}</p>
-//                 <p className="text-gray-600 mb-1">{currentEdu.school}</p>
-//                 <p className="text-gray-500">{currentEdu.year}</p>
-//               </div>
-//             ) : (
-//               <p className="text-gray-500 italic text-xs">None</p>
-//             )}
-//           </div>
-//         </div>
-
-//         {/* Right Column */}
-//         <div className="space-y-4 overflow-y-auto">
-//           {/* Skills */}
-//           <div className="node-skills">
-//             <strong className="block text-sm mb-1">Skills</strong>
-//             {person.skills && person.skills.length > 0 ? (
-//               <div className="flex flex-wrap gap-1">
-//                 {person.skills.slice(0, 6).map((skill, index) => (
-//                   <span 
-//                     key={index} 
-//                     className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs"
-//                   >
-//                     {skill}
-//                   </span>
-//                 ))}
-//               </div>
-//             ) : (
-//               <p className="text-gray-500 italic text-xs">None</p>
-//             )}
-//           </div>
-
-//           {/* Contact */}
-//           <div className="node-contact">
-//             <strong className="block text-sm mb-1">Contact</strong>
-//             {person.contacts && person.contacts.length > 0 ? (
-//               <div className="space-y-1 text-xs">
-//                 {person.contacts.slice(0, 3).map((contact, index) => (
-//                   <div key={index}>
-//                     <p><span className="font-medium">{contact.type}:</span> {contact.value}</p>
-//                   </div>
-//                 ))}
-//               </div>
-//             ) : (
-//               <p className="text-gray-500 italic text-xs">None</p>
-//             )}
-//           </div>
-
-//           {/* Tags */}
-//           <div className="node-tags">
-//             <strong className="block text-sm mb-1">Tags</strong>
-//             {person.tags && person.tags.length > 0 ? (
-//               <div className="flex flex-wrap gap-1">
-//                 {person.tags.slice(0, 4).map((tag, index) => (
-//                   <span 
-//                     key={index} 
-//                     className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs"
-//                   >
-//                     {tag}
-//                   </span>
-//                 ))}
-//               </div>
-//             ) : (
-//               <p className="text-gray-500 italic text-xs">None</p>
-//             )}
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Notes - Full width at bottom */}
-//       <div className="node-notes mt-4 border-t pt-2">
-//         <strong className="block text-sm mb-1">Notes</strong>
-//         {person.notes ? (
-//           <p className="text-gray-600 text-xs line-clamp-2">{person.notes}</p>
-//         ) : (
-//           <p className="text-gray-500 italic text-xs">None</p>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
+      <PersonNodeOverlay
+        person={{
+          id: data.id,
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          headshot: data.headshot || "",
+          education: data.education || [],
+          experience: data.experience || [],
+          skills: data.skills || [],
+          contacts: data.contacts || [],
+          tags: data.tags || [],
+          notes: data.notes || "",
+          parentId: data.parentId,
+        }}
+        isOpen={openNodeId === id}
+        onClose={() => (openNodeId === id ? setOpenNodeId?.(null) : void 0)}
+        isGuest={isGuest}
+        onConfirmDelete={async () => {
+          if (isGuest) return alert("Sign in to delete.");
+          const res = await fetch(`/api/connections?connectionId=${id}`, { method: "DELETE" });
+          if (!res.ok) throw new Error("Delete failed");
+          onDelete?.(id);
+        }}
+        onConfirmEdit={async (updated) => {
+          if (isGuest) return alert("Sign in to edit.");
+          const res = await fetch("/api/connections", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ connectionId: id, updates: updated }),
+          });
+          if (!res.ok) throw new Error("Update failed");
+          const updatedData: RFPersonNode["data"] = {
+            id: updated.id,
+            firstName: updated.firstName,
+            lastName: updated.lastName,
+            headshot: updated.headshot,
+            education: updated.education,
+            experience: updated.experience,
+            skills: updated.skills,
+            contacts: updated.contacts,
+            tags: updated.tags,
+            notes: updated.notes,
+            parentId: updated.parentId,
+            distance: data.distance,
+            maxDistance: data.maxDistance,
+          };
+          onUpdate?.(id, updatedData);
+        }}
+      />
+    </div>
+  );
+}

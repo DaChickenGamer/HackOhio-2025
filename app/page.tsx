@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export default function Home() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-200 dark:from-zinc-900 dark:to-black text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden">
+  <div className="relative flex min-h-screen items-center justify-center bg-linear-to-br from-zinc-50 to-zinc-200 dark:from-zinc-900 dark:to-black text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden">
       {/* ====== Fade-in black overlay ====== */}
       <motion.div
         initial={{ opacity: 1 }}
@@ -25,7 +25,7 @@ export default function Home() {
             ease: "easeOut",
             delay: 0.3,
           }}
-          className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent animate-gradient bg-[length:300%_300%] bg-gradient-to-r from-sky-400 via-blue-500 to-purple-600 drop-shadow-lg"
+          className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent animate-gradient bg-size-[300%_300%] bg-linear-to-r from-sky-400 via-blue-500 to-purple-600 drop-shadow-lg"
         >
           WebConnect
         </motion.h1>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useCallback, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useNodesState, useEdgesState, type NodeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { THEME } from "./utils/theme";
-import { PersonCircleNode } from "./components/PersonNode";
+import { PersonCircleNode } from "../components/PersonNode";
 import { useGraphData } from "./hooks/useGraphData";
 import { useGraphLayout } from "./hooks/useGraphLayout";
 import { PersonForm } from "./components/PersonForm";
@@ -19,6 +19,7 @@ export default function GraphPage() {
     const { nodes: initialNodes, edges: initialEdges, dataLoaded, guestWarning } = useGraphData(isLoaded);
     const [nodes, setNodes, onNodesChange] = useNodesState<PersonNode>(initialNodes || []);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges || []);
+    const [openNodeId, setOpenNodeId] = useState<string | null>(null);
 
     useEffect(() => {
         if (dataLoaded) {
@@ -29,7 +30,31 @@ export default function GraphPage() {
 
     useGraphLayout(nodes, edges, setNodes);
 
-    const nodeTypes = { person: PersonCircleNode as unknown as React.ComponentType<NodeProps> };
+    const handleDeleteNode = useCallback((nodeId: string) => {
+        setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+        setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+    }, [setNodes, setEdges]);
+
+    const handleUpdateNode = useCallback((nodeId: string, data: PersonNode["data"]) => {
+        setNodes((nds) =>
+            nds.map((n) => (n.id === nodeId ? { ...n, data } : n))
+        );
+    }, [setNodes]);
+
+    const nodeTypes = useMemo(
+        () => ({
+            person: ((props: NodeProps<PersonNode>) => (
+                <PersonCircleNode
+                    {...props}
+                    openNodeId={openNodeId}
+                    setOpenNodeId={setOpenNodeId}
+                    onDelete={handleDeleteNode}
+                    onUpdate={handleUpdateNode}
+                />
+            )) as unknown as React.ComponentType<NodeProps>,
+        }),
+        [handleDeleteNode, handleUpdateNode, openNodeId]
+    );
 
     if (!isLoaded || !dataLoaded) {
         return (
@@ -45,7 +70,7 @@ export default function GraphPage() {
     return (
         <main className="relative min-h-screen w-full overflow-hidden" style={{ background: THEME.bg, color: THEME.text }}>
             {guestWarning && <GuestAlert message={guestWarning} />}
-            <div className="flex h-[100vh] relative">
+            <div className="flex h-screen relative">
                 {/* Sidebar Form */}
                 <PersonForm nodes={nodes} setNodes={setNodes} setEdges={setEdges} isGuest={isGuest} />
 

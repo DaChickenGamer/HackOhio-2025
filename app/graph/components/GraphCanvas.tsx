@@ -40,12 +40,14 @@ export function GraphCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdg
           defaultEdgeOptions={{ type: "straight" }}
           connectionLineType={ConnectionLineType.Straight}
           panOnScroll
-          panOnDrag
+          panOnDrag={[1, 2]}
           zoomOnScroll
           zoomOnPinch
           zoomOnDoubleClick={false}
           minZoom={0.1}
           maxZoom={4}
+          nodesDraggable={false}
+          selectNodesOnDrag={false}
         />
       </div>
 
