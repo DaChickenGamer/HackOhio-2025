@@ -30,6 +30,7 @@ export default function PersonNodeOverlay({
 }) {
   const [expPage, setExpPage] = useState(0);
   const [eduPage, setEduPage] = useState(0);
+  const [contactPage, setContactPage] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
@@ -37,8 +38,7 @@ export default function PersonNodeOverlay({
 
   const expPages: Experience[] = form.experience || [];
   const eduPages: Education[] = form.education || [];
-  const maxExpPages = Math.max(expPages.length, 1);
-  const maxEduPages = Math.max(eduPages.length, 1);
+  const contactPages: Contact[] = form.contacts || [];
 
   const update = <K extends keyof PersonModel>(key: K, value: PersonModel[K]) =>
     setForm((f: PersonModel) => ({ ...f, [key]: value }));
@@ -184,16 +184,60 @@ export default function PersonNodeOverlay({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-lg font-semibold" style={{ color: THEME.muted }}>Experience</div>
-              {maxExpPages > 1 && (
-                <div className="flex gap-2">
-                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setExpPage((p) => (p - 1 + maxExpPages) % maxExpPages)}>
-                    Prev
+              <div className="flex gap-2 items-center">
+                {expPage > 0 && (
+                  <button
+                    className="px-2 py-1 rounded"
+                    style={{ background: THEME.border }}
+                    onClick={() => setExpPage((p) => p - 1)}
+                  >
+                    ←
                   </button>
-                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setExpPage((p) => (p + 1) % maxExpPages)}>
-                    Next
+                )}
+                {expPages.length > 0 && (
+                  <span className="text-sm" style={{ color: THEME.muted }}>
+                    {expPage + 1}/{expPages.length}
+                  </span>
+                )}
+                {expPage < expPages.length - 1 && (
+                  <button
+                    className="px-2 py-1 rounded"
+                    style={{ background: THEME.border }}
+                    onClick={() => setExpPage((p) => p + 1)}
+                  >
+                    →
                   </button>
-                </div>
-              )}
+                )}
+                {isEditing && (
+                  <>
+                    <button
+                      className="px-2 py-1 rounded text-sm"
+                      style={{ background: THEME.primary, color: THEME.bg }}
+                      onClick={() => {
+                        const next = ([...(form.experience || []), { role: "", company: "", duration: "" }] as Experience[]);
+                        update("experience", next as PersonModel["experience"]);
+                        setExpPage(next.length - 1);
+                      }}
+                    >
+                      + Add
+                    </button>
+                    <button
+                      className="px-2 py-1 rounded text-sm disabled:opacity-50"
+                      style={{ background: "#ef4444", color: "#fff" }}
+                      onClick={() => {
+                        if (!(form.experience && form.experience.length)) return;
+                        const next = (form.experience || []).filter((_, idx) => idx !== expPage) as Experience[];
+                        update("experience", next as PersonModel["experience"]);
+                        const newLen = next.length;
+                        setExpPage((prev) => (newLen === 0 ? 0 : Math.min(prev, newLen - 1)));
+                      }}
+                      disabled={!(form.experience && form.experience.length)}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="p-4 rounded-lg" style={{ background: THEME.bg, border: `1px solid ${THEME.border}` }}>
               {!isEditing ? (
@@ -229,16 +273,60 @@ export default function PersonNodeOverlay({
             {/* Education pager */}
             <div className="flex items-center justify-between">
               <div className="text-lg font-semibold" style={{ color: THEME.muted }}>Education</div>
-              {maxEduPages > 1 && (
-                <div className="flex gap-2">
-                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setEduPage((p) => (p - 1 + maxEduPages) % maxEduPages)}>
-                    Prev
+              <div className="flex gap-2 items-center">
+                {eduPage > 0 && (
+                  <button
+                    className="px-2 py-1 rounded"
+                    style={{ background: THEME.border }}
+                    onClick={() => setEduPage((p) => p - 1)}
+                  >
+                    ←
                   </button>
-                  <button className="px-2 py-1 rounded" style={{ background: THEME.border }} onClick={() => setEduPage((p) => (p + 1) % maxEduPages)}>
-                    Next
+                )}
+                {eduPages.length > 0 && (
+                  <span className="text-sm" style={{ color: THEME.muted }}>
+                    {eduPage + 1}/{eduPages.length}
+                  </span>
+                )}
+                {eduPage < eduPages.length - 1 && (
+                  <button
+                    className="px-2 py-1 rounded"
+                    style={{ background: THEME.border }}
+                    onClick={() => setEduPage((p) => p + 1)}
+                  >
+                    →
                   </button>
-                </div>
-              )}
+                )}
+                {isEditing && (
+                  <>
+                    <button
+                      className="px-2 py-1 rounded text-sm"
+                      style={{ background: THEME.primary, color: THEME.bg }}
+                      onClick={() => {
+                        const next = ([...(form.education || []), { degree: "", school: "", year: "" }] as Education[]);
+                        update("education", next as PersonModel["education"]);
+                        setEduPage(next.length - 1);
+                      }}
+                    >
+                      + Add
+                    </button>
+                    <button
+                      className="px-2 py-1 rounded text-sm disabled:opacity-50"
+                      style={{ background: "#ef4444", color: "#fff" }}
+                      onClick={() => {
+                        if (!(form.education && form.education.length)) return;
+                        const next = (form.education || []).filter((_, idx) => idx !== eduPage) as Education[];
+                        update("education", next as PersonModel["education"]);
+                        const newLen = next.length;
+                        setEduPage((prev) => (newLen === 0 ? 0 : Math.min(prev, newLen - 1)));
+                      }}
+                      disabled={!(form.education && form.education.length)}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="p-4 rounded-lg" style={{ background: THEME.bg, border: `1px solid ${THEME.border}` }}>
               {!isEditing ? (
@@ -286,35 +374,87 @@ export default function PersonNodeOverlay({
             </div>
 
             <div>
-              <div className="text-lg font-semibold mb-2" style={{ color: THEME.muted }}>Contacts</div>
-              {!isEditing ? (
-                <div className="space-y-1">
-                  {(form.contacts || []).map((c: Contact, i: number) => (
-                    <div key={i} className="text-base"><span className="font-medium">{c.type}:</span> {c.value}</div>
-                  ))}
-                  {!(form.contacts || []).length && <div className="opacity-60">—</div>}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-lg font-semibold" style={{ color: THEME.muted }}>Contacts</div>
+                <div className="flex gap-2 items-center">
+                  {contactPage > 0 && (
+                    <button
+                      className="px-2 py-1 rounded"
+                      style={{ background: THEME.border }}
+                      onClick={() => setContactPage((p) => p - 1)}
+                    >
+                      ←
+                    </button>
+                  )}
+                  {contactPages.length > 0 && (
+                    <span className="text-sm" style={{ color: THEME.muted }}>
+                      {contactPage + 1}/{contactPages.length}
+                    </span>
+                  )}
+                  {contactPage < contactPages.length - 1 && (
+                    <button
+                      className="px-2 py-1 rounded"
+                      style={{ background: THEME.border }}
+                      onClick={() => setContactPage((p) => p + 1)}
+                    >
+                      →
+                    </button>
+                  )}
+                  {isEditing && (
+                    <>
+                      <button
+                        className="px-2 py-1 rounded text-sm"
+                        style={{ background: THEME.primary, color: THEME.bg }}
+                        onClick={() => {
+                          const next = ([...(form.contacts || []), { type: "", value: "" }] as Contact[]);
+                          update("contacts", next as PersonModel["contacts"]);
+                          setContactPage(next.length - 1);
+                        }}
+                      >
+                        + Add
+                      </button>
+                      <button
+                        className="px-2 py-1 rounded text-sm disabled:opacity-50"
+                        style={{ background: "#ef4444", color: "#fff" }}
+                        onClick={() => {
+                          if (!(form.contacts && form.contacts.length)) return;
+                          const next = (form.contacts || []).filter((_, idx) => idx !== contactPage) as Contact[];
+                          update("contacts", next as PersonModel["contacts"]);
+                          const newLen = next.length;
+                          setContactPage((prev) => (newLen === 0 ? 0 : Math.min(prev, newLen - 1)));
+                        }}
+                        disabled={!(form.contacts && form.contacts.length)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {(form.contacts || []).map((c: Contact, i: number) => (
-                    <div key={i} className="grid grid-cols-2 gap-2">
-                      <input className="px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={c.type || ""} onChange={(e) => {
-                        const next = [...(form.contacts || [])];
-                        next[i] = { ...(next[i] || { type: "", value: "" }), type: e.target.value } as Contact;
-                        update("contacts", next as PersonModel["contacts"]);
-                      }} placeholder="Type" />
-                      <input className="px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={c.value || ""} onChange={(e) => {
-                        const next = [...(form.contacts || [])];
-                        next[i] = { ...(next[i] || { type: "", value: "" }), value: e.target.value } as Contact;
-                        update("contacts", next as PersonModel["contacts"]);
-                      }} placeholder="Value" />
+              </div>
+              <div className="p-4 rounded-lg" style={{ background: THEME.bg, border: `1px solid ${THEME.border}` }}>
+                {!isEditing ? (
+                  contactPages.length ? (
+                    <div>
+                      <div className="text-base"><span className="font-medium">{contactPages[contactPage]?.type}:</span> {contactPages[contactPage]?.value}</div>
                     </div>
-                  ))}
-                  <button className="px-3 py-2 rounded" style={{ background: THEME.border }} onClick={() => update("contacts", ([ ...(form.contacts || []), { type: "", value: "" }] as Contact[]))}>
-                    + Add Contact
-                  </button>
-                </div>
-              )}
+                  ) : (
+                    <div className="opacity-60">No contacts</div>
+                  )
+                ) : (
+                  <div className="space-y-2">
+                    <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={contactPages[contactPage]?.type || ""} onChange={(e) => {
+                      const next = [...(form.contacts || [])];
+                      next[contactPage] = { ...(next[contactPage] || { type: "", value: "" }), type: e.target.value } as Contact;
+                      update("contacts", next as PersonModel["contacts"]);
+                    }} placeholder="Type" />
+                    <input className="w-full px-3 py-2 rounded" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={contactPages[contactPage]?.value || ""} onChange={(e) => {
+                      const next = [...(form.contacts || [])];
+                      next[contactPage] = { ...(next[contactPage] || { type: "", value: "" }), value: e.target.value } as Contact;
+                      update("contacts", next as PersonModel["contacts"]);
+                    }} placeholder="Value" />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
