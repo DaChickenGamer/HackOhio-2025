@@ -45,25 +45,30 @@ export default function GraphPage() {
     return (
         <main className="relative min-h-screen w-full overflow-hidden" style={{ background: THEME.bg, color: THEME.text }}>
             {guestWarning && <GuestAlert message={guestWarning} />}
-            <div className="flex h-[100vh]">
+            <div className="flex h-[100vh] relative">
                 {/* Sidebar Form */}
                 <PersonForm nodes={nodes} setNodes={setNodes} setEdges={setEdges} isGuest={isGuest} />
 
                 {/* Graph Canvas */}
-                {nodes.length > 0 ? (
-                    <GraphCanvas
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        setEdges={setEdges}
-                        nodeTypes={nodeTypes}
-                    />
-                ) : (
-                    <div className="flex-1 flex items-center justify-center" style={{ color: THEME.text }}>
-                        No connections yet
-                    </div>
-                )}
+                <div className="flex-1 w-full md:w-auto touch-none">
+                    {nodes.length > 0 ? (
+                        <GraphCanvas
+                            nodes={nodes}
+                            edges={edges}
+                            onNodesChange={onNodesChange}
+                            onEdgesChange={onEdgesChange}
+                            setEdges={setEdges}
+                            nodeTypes={nodeTypes}
+                        />
+                    ) : (
+                        <div className="flex h-full items-center justify-center" style={{ color: THEME.text }}>
+                            <div className="text-center px-4">
+                                <p className="text-lg">No connections yet</p>
+                                <p className="text-sm mt-2 opacity-70">Click the + button to add your first person</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </main>
     );

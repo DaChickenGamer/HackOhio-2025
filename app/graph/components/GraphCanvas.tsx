@@ -26,8 +26,8 @@ export function GraphCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdg
   );
 
   return (
-    <section className="flex-1 h-full">
-      <div className="h-full w-full">
+    <section className="flex-1 h-full w-full">
+      <div className="h-full w-full touch-pan-x touch-pan-y">
         <ReactFlow<PersonNode, Edge>
           nodes={nodes}
           edges={edges}
@@ -39,6 +39,13 @@ export function GraphCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdg
           nodeTypes={nodeTypes}
           defaultEdgeOptions={{ type: "straight" }}
           connectionLineType={ConnectionLineType.Straight}
+          panOnScroll
+          panOnDrag
+          zoomOnScroll
+          zoomOnPinch
+          zoomOnDoubleClick={false}
+          minZoom={0.1}
+          maxZoom={4}
         />
       </div>
 

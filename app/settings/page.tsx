@@ -14,6 +14,7 @@ const sections = [
 
 export default function Settings() {
   const [selected, setSelected] = useState<string>("Profile Settings");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Password form state
   const [oldPassword, setOldPassword] = useState("");
@@ -59,9 +60,35 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex relative">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="md:hidden fixed top-20 left-4 z-50 p-3 bg-white rounded-full shadow-lg"
+        aria-label="Toggle settings menu"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          {sidebarOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r shadow-sm p-6">
+      <aside className={`
+        fixed md:relative inset-y-0 left-0 z-40
+        w-64 bg-white border-r shadow-sm p-6
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
         <h2 className="text-lg font-semibold mb-4">Settings</h2>
         <ul className="space-y-2">
           {sections.map((section) => (
@@ -69,16 +96,27 @@ export default function Settings() {
               key={section}
               label={section}
               active={selected === section}
-              onClick={() => setSelected(section)}
+              onClick={() => {
+                setSelected(section);
+                setSidebarOpen(false);
+              }}
             />
           ))}
         </ul>
       </aside>
 
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
       <main
         key={selected}
-        className="flex-1 p-8 animate-fadeIn transition-all duration-500"
+        className="flex-1 p-4 md:p-8 animate-fadeIn transition-all duration-500"
       >
         <h1 className="text-2xl font-semibold mb-4">{selected}</h1>
         <div className="bg-white rounded-lg shadow p-6 space-y-6">

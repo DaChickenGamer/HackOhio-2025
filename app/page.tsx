@@ -15,7 +15,7 @@ export default function Home() {
         className="absolute inset-0 bg-black z-50 pointer-events-none"
       />
 
-      <main className="flex flex-col items-center justify-center text-center px-8 py-16 max-w-3xl space-y-10 relative z-10">
+      <main className="flex flex-col items-center justify-center text-center px-4 sm:px-8 py-8 sm:py-16 max-w-3xl space-y-6 sm:space-y-10 relative z-10">
         {/* ====== Animated Company Name ====== */}
         <motion.h1
           initial={{ opacity: 0, scale: 0.8 }}
@@ -25,7 +25,7 @@ export default function Home() {
             ease: "easeOut",
             delay: 0.3,
           }}
-          className="text-6xl sm:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent animate-gradient bg-[length:300%_300%] bg-gradient-to-r from-sky-400 via-blue-500 to-purple-600 drop-shadow-lg"
+          className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent animate-gradient bg-[length:300%_300%] bg-gradient-to-r from-sky-400 via-blue-500 to-purple-600 drop-shadow-lg"
         >
           WebConnect
         </motion.h1>
@@ -35,7 +35,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.3, duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col items-center justify-center space-y-8"
+          className="flex flex-col items-center justify-center space-y-6 sm:space-y-8"
         >
           {/* Logo */}
           <motion.div
@@ -48,7 +48,7 @@ export default function Home() {
               alt="WebConnect Logo"
               width={300}
               height={10}
-              className="dark:invert"
+              className="dark:invert w-full max-w-[200px] sm:max-w-[300px]"
             />
           </motion.div>
 
@@ -57,7 +57,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.8, duration: 0.7 }}
-            className="text-3xl font-semibold"
+            className="text-2xl sm:text-3xl font-semibold px-4"
           >
             Visualize Connections Effortlessly
           </motion.h2>
@@ -67,7 +67,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 2.0, duration: 0.8 }}
-            className="text-lg text-zinc-600 dark:text-zinc-400 max-w-xl"
+            className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-xl px-4"
           >
             Explore relationships, structures, and data in an interactive and
             intuitive way. WebConnect brings your ideas to life through dynamic
@@ -79,10 +79,11 @@ export default function Home() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 2.2, duration: 0.7 }}
+            className="w-full px-4"
           >
             <Link
               href="/graph"
-              className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-900 px-8 text-white text-lg font-medium hover:bg-zinc-800 transition-colors dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-md"
+              className="inline-flex h-12 sm:h-14 items-center justify-center rounded-full bg-zinc-900 px-6 sm:px-8 text-base sm:text-lg font-medium hover:bg-zinc-800 transition-colors dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-md w-full sm:w-auto"
             >
               See the Graph →
             </Link>
@@ -94,7 +95,7 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 2.6, duration: 1 }}
-          className="text-sm text-zinc-500 dark:text-zinc-500 mt-8"
+          className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-500 mt-8 px-4"
         >
           © {new Date().getFullYear()} WebConnect. Built with Next.js & AWS DynamoDB.
         </motion.footer>

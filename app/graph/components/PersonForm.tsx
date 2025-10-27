@@ -14,6 +14,7 @@ interface PersonFormProps {
 }
 
 export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: PersonFormProps) {
+    const [isOpen, setIsOpen] = useState(false);
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [educations, setEducations] = useState<Array<{ degree: string; school: string; year: string }>>([]);
@@ -114,6 +115,7 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
             setContactLink("");
             setTags("");
             setNotes("");
+            setIsOpen(false); // Close sidebar after adding on mobile
         } catch (error) {
             console.error("Failed to add node:", error);
             alert("Failed to add connection. Please try again.");
@@ -121,10 +123,41 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
     };
 
     return (
-        <aside
-            className="w-[360px] shrink-0 border-r p-4 h-full flex flex-col gap-3 overflow-y-auto"
-            style={{ background: THEME.panel, color: THEME.text, borderColor: THEME.border }}
-        >
+        <>
+            {/* Mobile Toggle Button */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="md:hidden fixed top-20 left-4 z-50 p-3 rounded-full shadow-lg transition-all"
+                style={{ background: THEME.primary, color: "#001018" }}
+                aria-label="Toggle sidebar"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    {isOpen ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    )}
+                </svg>
+            </button>
+
+            {/* Sidebar */}
+            <aside
+                className={`
+                    fixed md:relative inset-0 md:inset-auto
+                    w-full md:w-[360px] 
+                    shrink-0 border-r p-4 h-full flex flex-col gap-3 overflow-y-auto
+                    transition-transform duration-300 ease-in-out
+                    z-40
+                    ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                `}
+                style={{ background: THEME.panel, color: THEME.text, borderColor: THEME.border }}
+            >
             <h1 className="text-2xl font-bold">Add Person</h1>
 
             <div className="grid grid-cols-2 gap-3">
@@ -412,5 +445,6 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
         }
       `}</style>
         </aside>
+        </>
     );
 }
