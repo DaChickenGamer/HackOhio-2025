@@ -124,16 +124,17 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
 
     return (
         <>
-            {/* Mobile Toggle Button */}
+            {/* Toggle Button - visible on all screen sizes */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="md:hidden fixed top-20 left-4 z-50 p-3 rounded-full shadow-lg transition-all"
-                style={{ background: THEME.primary, color: "#001018" }}
+                className="fixed top-4 left-4 z-50 p-3 rounded-full shadow-lg transition-all border backdrop-blur"
+                style={{ background: THEME.primary, color: "#001018", borderColor: THEME.border }}
                 aria-label="Toggle sidebar"
+                title={isOpen ? "Hide menu" : "Show menu"}
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
+                    className="h-7 w-7"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -146,19 +147,32 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
                 </svg>
             </button>
 
-            {/* Sidebar */}
+            {/* Sidebar - collapsible on all screen sizes */}
             <aside
                 className={`
-                    fixed md:relative inset-0 md:inset-auto
-                    w-full md:w-[360px] 
+                    fixed inset-0 w-full
+                    md:inset-y-0 md:left-0 md:right-auto md:w-[360px]
                     shrink-0 border-r p-4 h-full flex flex-col gap-3 overflow-y-auto
                     transition-transform duration-300 ease-in-out
-                    z-40
-                    ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                    z-40 custom-scrollbar
+                    ${isOpen ? 'translate-x-0' : '-translate-x-full'}
                 `}
                 style={{ background: THEME.panel, color: THEME.text, borderColor: THEME.border }}
             >
-            <h1 className="text-2xl font-bold">Add Person</h1>
+            <div className="flex items-center justify-between mb-1">
+                <h1 className="text-2xl font-bold">Add Person</h1>
+                <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-2 rounded-full hover:opacity-90 transition-opacity border"
+                    style={{ background: THEME.surface, color: THEME.text, borderColor: THEME.border }}
+                    aria-label="Close sidebar"
+                    title="Close"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -422,7 +436,7 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
                 Add Person & Connect
             </button>
 
-            <style jsx>{`
+                        <style jsx>{`
         .glow-focus {
           transition: all 180ms ease-out;
         }
@@ -443,6 +457,26 @@ export function PersonForm({ nodes, setNodes, setEdges, isGuest = false }: Perso
           20%, 60% { transform: translateX(-3px); }
           40%, 80% { transform: translateX(3px); }
         }
+                /* Custom scrollbar for sidebar */
+                :global(.custom-scrollbar) {
+                    scrollbar-width: thin; /* Firefox */
+                    scrollbar-color: ${THEME.primary700} ${THEME.surface};
+                }
+                :global(.custom-scrollbar::-webkit-scrollbar) {
+                    width: 10px;
+                }
+                :global(.custom-scrollbar::-webkit-scrollbar-track) {
+                    background: ${THEME.surface};
+                    border-left: 1px solid ${THEME.border};
+                }
+                :global(.custom-scrollbar::-webkit-scrollbar-thumb) {
+                    background-color: ${THEME.primary700};
+                    border-radius: 8px;
+                    border: 2px solid ${THEME.surface};
+                }
+                :global(.custom-scrollbar::-webkit-scrollbar-thumb:hover) {
+                    background-color: ${THEME.primary};
+                }
       `}</style>
         </aside>
         </>
