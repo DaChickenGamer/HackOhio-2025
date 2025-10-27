@@ -198,7 +198,13 @@ export async function DELETE(req: Request) {
         const connectionId = url.searchParams.get("connectionId");
         if (!connectionId) return NextResponse.json({ error: "Missing connectionId" }, { status: 400 });
 
-        await deleteConnection(userId, connectionId);
+        const result = await deleteConnection(userId, connectionId);
+        
+        // Check if deletion was unauthorized
+        if (result.message?.includes("Unauthorized")) {
+            return NextResponse.json({ error: result.message }, { status: 403 });
+        }
+        
         return NextResponse.json({ message: "Connection deleted successfully" });
     } catch (err: unknown) {
         console.error("DELETE connections error:", err);

@@ -354,12 +354,16 @@ export function PersonCircleNode(
       return;
     }
     try {
-      const res = await fetch(`/api/connections?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      const res = await fetch(`/api/connections?connectionId=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      console.log("Delete response:", data);
+      if (!res.ok) {
+        throw new Error(data.error || data.details || "Failed to delete");
+      }
       props.onDelete(id);
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Failed to delete person.");
+      alert("Failed to delete person: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
@@ -372,14 +376,17 @@ export function PersonCircleNode(
       const res = await fetch("/api/connections", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, updates: updated }),
+        body: JSON.stringify({ connectionId: id, updates: updated }),
       });
-      if (!res.ok) throw new Error("Failed to update");
-      const result = await res.json();
-      props.onUpdate(id, result.data as PersonData);
+      const data = await res.json();
+      console.log("Update response:", data);
+      if (!res.ok) {
+        throw new Error(data.error || data.details || "Failed to update");
+      }
+      props.onUpdate(id, data.updated as PersonData);
     } catch (err) {
       console.error("Update error:", err);
-      alert("Failed to update person.");
+      alert("Failed to update person: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
@@ -423,7 +430,8 @@ export function PersonCircleNode(
             border: 'none',
             left: '50%',
             top: '50%',
-            transform: 'translate(-50%, -50%)'
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none'
           }} 
         />
         <Handle 
@@ -437,7 +445,8 @@ export function PersonCircleNode(
             border: 'none',
             left: '50%',
             top: '50%',
-            transform: 'translate(-50%, -50%)'
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none'
           }} 
         />
       </div>

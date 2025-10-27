@@ -1,4 +1,4 @@
-import { GetCommand, PutCommand, UpdateCommand, QueryCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, UpdateCommand, QueryCommand, BatchWriteCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb } from "./client";
 import { Person } from "@/types/person";
 import { v4 as uuidv4 } from "uuid";
@@ -289,31 +289,41 @@ export async function updateConnection(
 
 // -------------------- DELETE CONNECTION --------------------
 export async function deleteConnection(userId: string, connectionId: string) {
-  const pk = `CONNECTION#${connectionId}`;
-
+  console.log("TABLE_NAME:", TABLE_NAME);
+  console.log("Attempting to delete connectionId:", connectionId);
+  
+  // Query for all items with this connectionId using the GSI
   const result = await ddb.send(
     new QueryCommand({
       TableName: TABLE_NAME,
-      KeyConditionExpression: "id = :pk",
-      ExpressionAttributeValues: { ":pk": pk },
+      IndexName: CONNECTIONS_GSI,
+      KeyConditionExpression: "userId = :userId",
+      FilterExpression: "connectionId = :connectionId",
+      ExpressionAttributeValues: {
+        ":userId": userId,
+        ":connectionId": connectionId,
+      },
     })
   );
 
   const itemsToDelete = result.Items ?? [];
-  if (itemsToDelete.some(item => item.userId !== userId)) {
-    return { message: "Unauthorized: Connection does not belong to this user" };
+  
+  console.log("Items found to delete:", itemsToDelete.map(item => ({ id: item.id })));
+  
+  if (itemsToDelete.length === 0) {
+    return { message: "Connection not found" };
   }
 
-  const deleteRequests = itemsToDelete.map(item => ({
-    DeleteRequest: { Key: { id: item.id, type: item.type } },
-  }));
-
-  for (let i = 0; i < deleteRequests.length; i += 25) {
+  // Delete each item using only the id (partition key)
+  for (const item of itemsToDelete) {
+    console.log("Deleting item with id:", item.id);
     await ddb.send(
-      new BatchWriteCommand({
-        RequestItems: { [TABLE_NAME]: deleteRequests.slice(i, i + 25) },
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { id: item.id },
       })
     );
+    console.log("Successfully deleted item:", item.id);
   }
 
   return { message: "Connection and all related items deleted successfully" };
