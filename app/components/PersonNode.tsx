@@ -342,6 +342,7 @@ export function PersonCircleNode(
   const { id, data } = props;
   const { isSignedIn } = useUser();
   const person = data as unknown as PersonModel;
+  const personData = data as unknown as PersonData;
 
   const handleClick = () => {
     props.setOpenNodeId(id);
@@ -382,25 +383,63 @@ export function PersonCircleNode(
     }
   };
 
-  const gradient = `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.secondary} 100%)`;
+  // Dynamic gradient based on distance from root
+  const distance = personData.distance ?? 0;
+  const maxDistance = personData.maxDistance ?? 1;
+  const ratio = maxDistance > 0 ? Math.min(distance / maxDistance, 1) : 0;
+  
+  // Rainbow gradient progression based on depth
+  // Maps ratio 0->1 to hue 0->300 (red->orange->yellow->green->cyan->blue->purple)
+  const hue = Math.floor(ratio * 300);
+  const nextHue = Math.floor(ratio * 300 + 60) % 360;
+  
+  const gradient = `linear-gradient(135deg, 
+    hsl(${hue}, 85%, 60%) 0%, 
+    hsl(${nextHue}, 85%, 55%) 100%)`;
 
   return (
     <>
       <div
         className="nodrag cursor-pointer relative flex items-center justify-center rounded-full"
         style={{
-          width: 120,
-          height: 120,
+          width: 80,
+          height: 80,
           background: gradient,
           boxShadow: `0 4px 20px rgba(0,0,0,0.3)`,
         }}
         onClick={handleClick}
       >
-        <div className="text-3xl font-bold" style={{ color: THEME.bg }}>
+        <div className="text-2xl font-bold" style={{ color: THEME.bg }}>
           {initials(person)}
         </div>
-        <Handle type="source" position={Position.Right} style={{ background: THEME.primary }} />
-        <Handle type="target" position={Position.Left} style={{ background: THEME.primary }} />
+        <Handle 
+          type="source" 
+          position={Position.Bottom} 
+          style={{ 
+            background: THEME.primary, 
+            opacity: 0, 
+            width: 1, 
+            height: 1,
+            border: 'none',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }} 
+        />
+        <Handle 
+          type="target" 
+          position={Position.Bottom} 
+          style={{ 
+            background: THEME.primary, 
+            opacity: 0,
+            width: 1, 
+            height: 1,
+            border: 'none',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }} 
+        />
       </div>
 
       <PersonNodeOverlay

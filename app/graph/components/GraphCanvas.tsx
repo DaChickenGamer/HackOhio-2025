@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
-import { ReactFlow, addEdge, ConnectionLineType, type NodeProps, type Connection } from "@xyflow/react";
+import { ReactFlow, ConnectionLineType, type NodeProps } from "@xyflow/react";
 import type { PersonNode } from "../types";
 import type { Edge, OnNodesChange, OnEdgesChange } from "@xyflow/react";
-import { THEME } from "../utils/theme";
 
 
 interface GraphCanvasProps {
@@ -16,15 +14,7 @@ interface GraphCanvasProps {
   nodeTypes: Record<string, React.ComponentType<NodeProps>>;
 }
 
-export function GraphCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdges, nodeTypes }: GraphCanvasProps) {
-  const onConnect = useCallback(
-    (c: Connection) =>
-      setEdges((eds) =>
-        addEdge({ ...c, type: "straight", animated: false, style: { stroke: THEME.primary, strokeWidth: 2 } }, eds)
-      ),
-    [setEdges]
-  );
-
+export function GraphCanvas({ nodes, edges, onNodesChange, onEdgesChange, nodeTypes }: GraphCanvasProps) {
   return (
     <section className="flex-1 h-full w-full">
       <div className="h-full w-full touch-pan-x touch-pan-y">
@@ -33,7 +23,6 @@ export function GraphCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdg
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
           fitView
           proOptions={{ hideAttribution: true }}
           nodeTypes={nodeTypes}
@@ -48,6 +37,9 @@ export function GraphCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdg
           maxZoom={4}
           nodesDraggable={false}
           selectNodesOnDrag={false}
+          edgesReconnectable={false}
+          edgesFocusable={false}
+          nodesConnectable={false}
         />
       </div>
 

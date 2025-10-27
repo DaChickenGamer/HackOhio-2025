@@ -1,8 +1,8 @@
 import type { PersonData } from "../types";
 
-export const NODE_DIAM = 96;
+export const NODE_DIAM = 80;
 export const CENTER = { x: 600, y: 360 };
-export const GAP = 48;
+export const GAP = 80;
 export const RING_STEP = NODE_DIAM + GAP;
 
 export const fullName = (d?: Partial<PersonData>) =>
