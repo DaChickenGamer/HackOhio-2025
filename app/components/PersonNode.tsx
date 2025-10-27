@@ -31,6 +31,7 @@ export default function PersonNodeOverlay({
   const [expPage, setExpPage] = useState(0);
   const [eduPage, setEduPage] = useState(0);
   const [contactPage, setContactPage] = useState(0);
+  const [skillPage, setSkillPage] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
@@ -39,6 +40,7 @@ export default function PersonNodeOverlay({
   const expPages: Experience[] = form.experience || [];
   const eduPages: Education[] = form.education || [];
   const contactPages: Contact[] = form.contacts || [];
+  const skillPages: string[] = form.skills || [];
 
   const update = <K extends keyof PersonModel>(key: K, value: PersonModel[K]) =>
     setForm((f: PersonModel) => ({ ...f, [key]: value }));
@@ -132,6 +134,7 @@ export default function PersonNodeOverlay({
           color: THEME.text,
           width: "min(90vmin, 900px)",
           height: "min(90vmin, 900px)",
+          overflow: "hidden",
         }}
         role="dialog"
         aria-modal="true"
@@ -363,14 +366,84 @@ export default function PersonNodeOverlay({
           {/* Right: Skills, Contacts, Notes */}
           <div className="space-y-6">
             <div>
-              <div className="text-lg font-semibold mb-2" style={{ color: THEME.muted }}>Skills</div>
-              {!isEditing ? (
-                <div className="text-base leading-relaxed">{(form.skills || []).join(", ") || "—"}</div>
-              ) : (
-                <textarea className="w-full px-3 py-2 rounded" rows={4} style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={(form.skills || []).join(", ")}
-                  onChange={(e) => update("skills", e.target.value.split(",").map((s) => s.trim()).filter(Boolean) as string[])}
-                />
-              )}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-lg font-semibold" style={{ color: THEME.muted }}>Skills</div>
+                <div className="flex gap-2 items-center">
+                  {skillPage > 0 && (
+                    <button
+                      className="px-2 py-1 rounded"
+                      style={{ background: THEME.border }}
+                      onClick={() => setSkillPage((p) => p - 1)}
+                    >
+                      ←
+                    </button>
+                  )}
+                  {skillPages.length > 0 && (
+                    <span className="text-sm" style={{ color: THEME.muted }}>
+                      {skillPage + 1}/{skillPages.length}
+                    </span>
+                  )}
+                  {skillPage < skillPages.length - 1 && (
+                    <button
+                      className="px-2 py-1 rounded"
+                      style={{ background: THEME.border }}
+                      onClick={() => setSkillPage((p) => p + 1)}
+                    >
+                      →
+                    </button>
+                  )}
+                  {isEditing && (
+                    <>
+                      <button
+                        className="px-2 py-1 rounded text-sm"
+                        style={{ background: THEME.primary, color: THEME.bg }}
+                        onClick={() => {
+                          const next = [...(form.skills || []), ""];
+                          update("skills", next as string[]);
+                          setSkillPage(next.length - 1);
+                        }}
+                      >
+                        + Add
+                      </button>
+                      <button
+                        className="px-2 py-1 rounded text-sm disabled:opacity-50"
+                        style={{ background: "#ef4444", color: "#fff" }}
+                        onClick={() => {
+                          if (!(form.skills && form.skills.length)) return;
+                          const next = (form.skills || []).filter((_, idx) => idx !== skillPage);
+                          update("skills", next as string[]);
+                          const newLen = next.length;
+                          setSkillPage((prev) => (newLen === 0 ? 0 : Math.min(prev, newLen - 1)));
+                        }}
+                        disabled={!(form.skills && form.skills.length)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="p-4 rounded-lg" style={{ background: THEME.bg, border: `1px solid ${THEME.border}` }}>
+                {!isEditing ? (
+                  skillPages.length ? (
+                    <div className="text-base">{skillPages[skillPage]}</div>
+                  ) : (
+                    <div className="opacity-60">No skills</div>
+                  )
+                ) : (
+                  <input
+                    className="w-full px-3 py-2 rounded"
+                    style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }}
+                    value={skillPages[skillPage] || ""}
+                    onChange={(e) => {
+                      const next = [...(form.skills || [])];
+                      next[skillPage] = e.target.value;
+                      update("skills", next as string[]);
+                    }}
+                    placeholder="Enter skill"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
@@ -471,10 +544,15 @@ export default function PersonNodeOverlay({
             <div>
               <div className="text-lg font-semibold mb-2" style={{ color: THEME.muted }}>Notes</div>
               {!isEditing ? (
-                <div className="text-base leading-relaxed">{form.notes || "—"}</div>
+                <div className="text-base leading-relaxed max-h-32 overflow-y-auto" style={{ wordBreak: "break-word" }}>{form.notes || "—"}</div>
               ) : (
-                <textarea className="w-full px-3 py-2 rounded" rows={6} style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }} value={form.notes || ""}
+                <textarea
+                  className="w-full px-3 py-2 rounded resize-none"
+                  rows={6}
+                  style={{ background: THEME.panel, border: `1px solid ${THEME.border}`, maxHeight: "150px" }}
+                  value={form.notes || ""}
                   onChange={(e) => update("notes", e.target.value as string)}
+                  placeholder="Enter notes"
                 />
               )}
             </div>
